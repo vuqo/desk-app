@@ -97,7 +97,7 @@ function home(){const start=C?.start||S.settings?.["desk.paper_start_stack"]||S.
  <div class="sh"><h2>Profit &amp; loss</h2><span class="l2 num" style="font-size:var(--t2)">from ${usd(start)}</span></div><div class="pnlc"><canvas id="pnl"></canvas><div class="pnll num ${S.stack>=start?"up":"dn"}">${S.stack>=start?"+":"-"}$${f2(Math.abs(S.stack-start))} all time</div></div>
  <div class="sh"><h2>Agents · ${running} running</h2><a href="#/agents">All</a></div>${chips()}
  <div class="sh"><h2>Activity</h2><a href="#/activity">See all</a></div><div class="fillw hact">${actList(((A&&A.items)||[]).filter(a=>SR||a.kind!=="reject").slice(0,3),"No activity yet tonight. The desk writes here when a coin is rejected, bought or sold.")}</div>`}
-function ticker(){const seen=new Set(),it=[];for(const p of S.positions)if(!seen.has(p.mint)){seen.add(p.mint);it.push({mint:p.mint,name:p.name,image:p.image,tag:"holding",h1:null,live:1})}
+function ticker(){const seen=new Set(),it=[];for(const p of S.positions)if((p.status==="open"||p.status==="exiting")&&!seen.has(p.mint)){seen.add(p.mint);it.push({mint:p.mint,name:p.name,image:p.image,tag:"holding",h1:null,live:1})}
  for(const f of S.scanner.feed)if(f.verdict==="pass"&&!seen.has(f.mint)&&it.length<14){seen.add(f.mint);it.push({mint:f.mint,name:f.name,image:f.image,h1:f.h1,liq:f.liq,pass:f.verdict==="pass"})}
  if(!it.length)return"";const one=it.map(c=>`<a class="tk" href="#/coin/${esc(c.mint)}">${logo(c.name,c.image||imgOf(c.mint),c.mint,20)}<b>${esc((c.name||c.mint.slice(0,5)).slice(0,16))}</b>${c.live?'<span class="up">● holding</span>':c.h1!=null?`<span class="${c.h1>=0?"up":"dn"} num">${c.h1>=0?"+":""}${Number(c.h1).toFixed(1)}%</span>`:`<span class="l3 num">$${kfmt(c.liq)}</span>`}</a>`).join("");
  return`<div class="tkr${RM?" still":""}" aria-label="Coins the desk is watching"><div class="tkt" style="--n:${it.length}">${one}${RM?"":one}</div></div>`}
@@ -188,7 +188,7 @@ function drawDisc(){const cv=$("#disc"),a=auditData();if(!cv||!a)return;const dp
 function coin(){const m=(location.hash.match(/#\/coin\/(\w+)/)||[])[1],d=coinCache[m];
  const fd=(S&&S.scanner.feed||[]).find(f=>f.mint===m),sp=(S&&S.positions||[]).find(p=>p.mint===m);
  if(!d&&!fd&&!sp)return COINMISS[m]?`<div class="empty"><b>No data for this coin yet</b>It shows up once the desk has read it.</div>`:skeleton("coin");
- const D=d||{},sc=D.scan||{},c=Object.assign({},fd||{},sp||{},D.coin||{}),pos=(D.positions||[])[0]||sp,held=pos&&pos.status!=="closed",pr=D.prices||[],last=pr.at(-1)?.price||+sc.priceUsd||fd?.price,first=pr[0]?.price,ch=first?100*(last/first-1):0;
+ const D=d||{},sc=D.scan||{},c=Object.assign({},fd||{},sp||{},D.coin||{}),pos=(D.positions||[])[0]||sp,held=pos&&(pos.status==="open"||pos.status==="exiting"),pr=D.prices||[],last=pr.at(-1)?.price||+sc.priceUsd||fd?.price,first=pr[0]?.price,ch=first?100*(last/first-1):0;
  const link=D.link||fd?.link||sp?.link,au=D.audit,an=D.analysis,L=(au&&au.layers)||[],lv=n=>(L.find(l=>l.n===n)||{}).value;
  const liq=sc.liquidityUsd??fd?.liq,row=(k,v,cls="")=>`<div class="li" style="min-height:40px"><div class="m l2" style="font-size:var(--t2)">${k}</div><div class="v num ${cls}">${v}</div></div>`;
  const pnl=pos?(pos.status==="closed"?pos.pnl_usd:(last&&pos.entry_price?pos.size_usd*(last/pos.entry_price-1):null)):null;
