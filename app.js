@@ -15,7 +15,7 @@ const ext=(url,inner,cls="")=>url?`<a class="${cls}" href="${esc(url)}" target="
 const time=t=>t?new Date(t).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}):"—";
 async function get(p){const r=await fetch(BASE()+p+"?t="+Date.now(),{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}
 async function poll(){if(!DP()){ERR="nolink";render();return}
- try{[S,A,C]=await Promise.all([get("state.json"),get("activity.json"),get("chart.json")]);ERR=null;LAST=Date.now();{const top=(A&&A.items||[]).filter(a=>a.kind==="buy"||(a.kind==="sell"&&!String(a.value).startsWith("-")));const mx=Math.max(0,...top.map(a=>+new Date(a.ts)||0));if(SEENTS&&mx>SEENTS)PENDBURST=1;SEENTS=Math.max(SEENTS||0,mx)||-1}
+ try{[S,A,C]=await Promise.all([get("state.json"),get("activity.json"),get("chart.json")]);ERR=null;LAST=Date.now();indexImgs();{const top=(A&&A.items||[]).filter(a=>a.kind==="buy"||(a.kind==="sell"&&!String(a.value).startsWith("-")));const mx=Math.max(0,...top.map(a=>+new Date(a.ts)||0));if(SEENTS&&mx>SEENTS)PENDBURST=1;SEENTS=Math.max(SEENTS||0,mx)||-1}
   const m=location.hash.match(/#\/coin\/(\w+)/);if(m)coinCache[m[1]]=await get("coin/"+m[1]+".json").catch(()=>null);
  }catch(e){ERR=e.message}NEXT=Date.now()+15000;render()}
 let prevStack=0,BALDIR=0,PENDBURST=0,SEENTS=0,P=[];const DEMO=DEMO0;
@@ -30,6 +30,22 @@ function fxLoop(t){const cv=$("#fx"),dpr=devicePixelRatio||1;if(cv.width!==inner
  requestAnimationFrame(fxLoop)}
 if(!RM)requestAnimationFrame(fxLoop);
 if(DEMO){history.replaceState(null,"",location.pathname+"#/home");setInterval(()=>route()==="home"&&burstAt(".big"),1300);setTimeout(()=>burstAt(".big"),900)}
+/* ---------- v4: logos, theme, sound ---------- */
+const HUE=t=>{let h=0;for(const c of String(t||"?"))h=(h*31+c.charCodeAt(0))%360;return h};
+function logo(name,img,mint,sz=40){const n=esc(((name||mint||"?").trim()[0]||"?").toUpperCase()),h=HUE(mint||name);
+ const fb=`<span class="lg-i" style="background:hsl(${h} 70% 22%);color:hsl(${h} 90% 72%)">${n}</span>`;
+ return `<span class="lg" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.42)}px">${fb}${img&&/^https:\/\//.test(img)?`<img src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}</span>`}
+const IMG={};function imgOf(m){return IMG[m]||null}
+function indexImgs(){(S?.scanner?.feed||[]).forEach(f=>{if(f.image)IMG[f.mint]=f.image});(S?.positions||[]).forEach(p=>{if(p.image)IMG[p.mint]=p.image})}
+const THEME=()=>localStorage.getItem("theme")||"dark";function applyTheme(){document.documentElement.dataset.theme=THEME();document.querySelector('meta[name=theme-color]')?.setAttribute("content",THEME()==="neon"?"#07001a":"#000000")}applyTheme();
+let ACX=null;const SOUND=()=>localStorage.getItem("sound")==="on";
+function unlockAudio(){if(ACX)return;try{ACX=new (window.AudioContext||window.webkitAudioContext)();const b=ACX.createBuffer(1,1,22050),s=ACX.createBufferSource();s.buffer=b;s.connect(ACX.destination);s.start(0)}catch(e){}}
+function chaChing(){if(!SOUND()||!ACX||document.hidden)return;if(ACX.state==="suspended")ACX.resume();const t=ACX.currentTime;
+ [[1318.5,0,.09],[1975.5,.09,.5],[2637,.11,.45]].forEach(([f,d,len])=>{const o=ACX.createOscillator(),g=ACX.createGain();o.type="triangle";o.frequency.value=f;g.gain.setValueAtTime(0,t+d);g.gain.linearRampToValueAtTime(.22,t+d+.008);g.gain.exponentialRampToValueAtTime(.0008,t+d+len);o.connect(g).connect(ACX.destination);o.start(t+d);o.stop(t+d+len+.02)});
+ const n=ACX.createBuffer(1,ACX.sampleRate*.06,ACX.sampleRate),dd=n.getChannelData(0);for(let i=0;i<dd.length;i++)dd[i]=(Math.random()*2-1)*(1-i/dd.length);const ns=ACX.createBufferSource(),ng=ACX.createGain(),hp=ACX.createBiquadFilter();hp.type="highpass";hp.frequency.value=5000;ns.buffer=n;ng.gain.value=.12;ns.connect(hp).connect(ng).connect(ACX.destination);ns.start(t)}
+function buzz(){if(document.hidden)return;try{navigator.vibrate&&navigator.vibrate([18,40,28])}catch(e){}}
+function win(){chaChing();buzz()}
+addEventListener("pointerdown",()=>{if(SOUND())unlockAudio()},{once:false,passive:true});
 const route=()=>(location.hash.match(/#\/(\w+)/)||[,"home"])[1];
 /* ---------- odometer ---------- */
 let prevBal=null;
@@ -55,9 +71,9 @@ function render(){const r=route();navbar(r);errRow();
  if(!S){v.innerHTML=ERR?`<div class="empty"><b>Desk offline</b>Can't reach your desk right now. Retrying every 15 seconds.</div>`:skeleton();return}
  v.innerHTML=({home,agents,auditor,coin,activity,account}[r]||home)();
  const c2=v.querySelector(".car");if(c2){c2.scrollLeft=sl;c2.onscroll=()=>{const i=Math.round(c2.scrollLeft/(c2.firstElementChild.offsetWidth+12));v.querySelectorAll(".dots i").forEach((d,j)=>d.classList.toggle("on",j===i))}}
- if(r==="home"){drawChart(false);rollOdo();if(BALDIR&&!RM){const b=$(".big");b.classList.add(BALDIR>0?"gu":"gd");setTimeout(()=>b.classList.remove("gu","gd"),1400);if(BALDIR>0)burstAt(".big");}BALDIR=0;if(PENDBURST){burstAt(".big");PENDBURST=0}v.querySelectorAll(".range button").forEach(b=>b.onclick=()=>{RANGE=b.dataset.r;localStorage.setItem("range",RANGE);v.querySelectorAll(".range button").forEach(x=>x.classList.toggle("on",x===b));drawChart(true)})}
+ if(r==="home"){drawChart(false);drawPnl();rollOdo();if(BALDIR&&!RM){const b=$(".big");b.classList.add(BALDIR>0?"gu":"gd");setTimeout(()=>b.classList.remove("gu","gd"),1400);if(BALDIR>0)burstAt(".big");}BALDIR=0;if(PENDBURST){burstAt(".big");win();PENDBURST=0}v.querySelectorAll(".range button").forEach(b=>b.onclick=()=>{RANGE=b.dataset.r;localStorage.setItem("range",RANGE);v.querySelectorAll(".range button").forEach(x=>x.classList.toggle("on",x===b));drawChart(true)})}
  if(r==="coin")drawCandles();if(r==="auditor")drawDisc();
- v.querySelectorAll(".seg a").forEach(a=>a.onclick=e=>{e.preventDefault();SEG=a.dataset.s;render()})}
+ if(r==="activity"||r==="home")bindFlip(v);bindAcct(v);v.querySelectorAll(".seg a").forEach(a=>a.onclick=e=>{e.preventDefault();SEG=a.dataset.s;render()})}
 function skeleton(){return`<div style="padding-top:18px"><div class="sk" style="height:70px;width:70%"></div><div class="sk" style="height:18px;width:40%;margin-top:12px"></div><div class="sk" style="height:220px;margin-top:20px;border-radius:16px"></div><div class="sk" style="height:44px;margin-top:12px"></div><div class="sk" style="height:300px;margin-top:26px;border-radius:32px"></div></div>`}
 function pair(){return`<div class="pt">Link your desk</div><div class="list nb" style="padding:20px 16px"><div class="l2" style="font-size:15px">Paste the desk link from your chat. It ends in <span class="mono">#d=…</span> and is saved on this phone only.</div><input id="lnk" class="f" placeholder="Paste link" autocomplete="off" autocapitalize="off"><button id="lnkb" class="btn">Link desk</button></div>`}
 function bindPair(){$("#lnkb").onclick=()=>{const m=($("#lnk").value||"").match(/[#&]d=([A-Za-z0-9_-]{32,})/);if(!m){alert("That link has no #d= part");return}localStorage.setItem("dp",m[1]);location.hash="#/home";location.reload()}}
@@ -65,14 +81,32 @@ function bindPair(){$("#lnkb").onclick=()=>{const m=($("#lnk").value||"").match(
 function home(){const start=C?.start||S.settings?.["desk.paper_start_stack"]||S.stack,pct=start?100*S.pnl_today/start:0,mult=start?S.stack/start:1;
  const bal="$"+f2(S.stack),html=odo(bal,prevBal);if(prevBal!=null&&prevBal!==bal)BALDIR=S.stack>prevStack?1:-1;prevBal=bal;prevStack=S.stack;
  const open=S.positions.filter(p=>p.status==="open"||p.status==="exiting");const running=Object.values(S.agents).filter(a=>a.alive&&!a.paused).length;
- return `<div class="bal"><canvas id="tw"></canvas><div class="row1"><div class="big num" aria-label="${bal}">${html}</div>${S.mode==="PAPER"?'<span class="pill p-o">PAPER</span>':'<span class="pill p-r">LIVE</span>'}</div>
+ return `${ticker()}<div class="bal"><canvas id="tw"></canvas><div class="row1"><div class="big num" aria-label="${bal}">${html}</div>${S.mode==="PAPER"?'<span class="pill p-o">PAPER</span>':'<span class="pill p-r">LIVE</span>'}</div>
  <div class="chg num"><span class="${S.pnl_today>=0?"up":"dn"}">${S.pnl_today>=0?"+":"-"}$${f2(Math.abs(S.pnl_today))} (${pct>=0?"+":""}${pct.toFixed(2)}%)</span><span class="l2">Today</span><span class="pill p-g num">${mult.toFixed(2)}×</span></div></div>
  <canvas class="chart" id="ch"></canvas>
  <div class="range">${["LIVE","1H","4H","1D","1W","ALL"].map(r=>`<button data-r="${r}" class="${r===RANGE?"on":""}">${r}</button>`).join("")}</div>
  ${open.length?`<div class="sh"><h2>Open</h2></div><div class="list">${open.map(posRow).join("")}</div>`:""}
+ <div class="sh"><h2>Profit &amp; loss</h2><span class="l2 num" style="font-size:15px">from ${usd(start)}</span></div><div class="pnlc"><canvas id="pnl"></canvas><div class="pnll num ${S.stack>=start?"up":"dn"}">${S.stack>=start?"+":"-"}$${f2(Math.abs(S.stack-start))} all time</div></div>
  <div class="sh"><h2>Agents · ${running} running</h2><a href="#/agents">All</a></div>${carousel()}
  <div class="sh"><h2>Activity</h2><a href="#/activity">See all</a></div>${actList(((A&&A.items)||[]).slice(0,5),"No activity yet tonight. The desk writes here when a coin is rejected, bought or sold.")}`}
-function posRow(p){return`<div class="li"><a href="#/coin/${esc(p.mint)}" class="ico" style="background:rgba(10,132,255,.18);color:var(--b)">${esc((p.name||"?")[0])}</a><a class="m" href="#/coin/${esc(p.mint)}"><div class="t">${esc(p.name)}</div><div class="s num">${usd(p.size_usd)} · stop <span class="mono">-${p.stop_pct}%</span></div></a>${ext(p.link,'Sell on FOMO','sell')}</div>`}
+function ticker(){const seen=new Set(),it=[];for(const p of S.positions)if(!seen.has(p.mint)){seen.add(p.mint);it.push({mint:p.mint,name:p.name,image:p.image,tag:"holding",h1:null,live:1})}
+ for(const f of S.scanner.feed)if(!seen.has(f.mint)&&it.length<14){seen.add(f.mint);it.push({mint:f.mint,name:f.name,image:f.image,h1:f.h1,liq:f.liq,pass:f.verdict==="pass"})}
+ if(!it.length)return"";const one=it.map(c=>`<a class="tk" href="#/coin/${esc(c.mint)}">${logo(c.name,c.image||imgOf(c.mint),c.mint,20)}<b>${esc((c.name||c.mint.slice(0,5)).slice(0,16))}</b>${c.live?'<span class="up">● holding</span>':c.h1!=null?`<span class="${c.h1>=0?"up":"dn"} num">${c.h1>=0?"+":""}${Number(c.h1).toFixed(1)}%</span>`:`<span class="l3 num">$${kfmt(c.liq)}</span>`}</a>`).join("");
+ return`<div class="tkr${RM?" still":""}" aria-label="Coins the desk is watching"><div class="tkt" style="--n:${it.length}">${one}${RM?"":one}</div></div>`}
+function drawPnl(){const cv=$("#pnl");if(!cv)return;const dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;const x=cv.getContext("2d");x.scale(dpr,dpr);
+ const start=C?.start||200,now=Date.now();let pts=((C&&C.points)||[]).map(p=>({t:+new Date(p.t),v:start+p.v}));const t0=pts.length?Math.min(pts[0].t-6e5,now-36e5):now-36e5;
+ const s=[{t:t0,v:start},...pts,{t:now,v:S.stack}],vs=s.map(p=>p.v),mn=Math.min(...vs,start),mx=Math.max(...vs,start),sp=Math.max(mx-mn,start*.03),lo=mn-sp*.15,hi=mx+sp*.15;
+ const X=t=>6+(t-t0)/((now-t0)||1)*(W-12),Y=v=>8+(hi-v)/(hi-lo)*(H-16),by=Y(start);
+ // smooth path (monotone-ish catmull)
+ const P=s.map(p=>[X(p.t),Y(p.v)]);const path=()=>{x.beginPath();x.moveTo(...P[0]);for(let i=0;i<P.length-1;i++){const p0=P[i-1]||P[i],p1=P[i],p2=P[i+1],p3=P[i+2]||p2,k=.18;x.bezierCurveTo(p1[0]+(p2[0]-p0[0])*k,p1[1]+(p2[1]-p0[1])*k,p2[0]-(p3[0]-p1[0])*k,p2[1]-(p3[1]-p1[1])*k,p2[0],p2[1])}};
+ const G=getComputedStyle(document.documentElement),cg=G.getPropertyValue("--g").trim()||"#00d35a",cr=G.getPropertyValue("--r").trim()||"#ff453a";
+ x.setLineDash([2,4]);x.strokeStyle="rgba(235,235,245,.28)";x.lineWidth=1;x.beginPath();x.moveTo(0,by);x.lineTo(W,by);x.stroke();x.setLineDash([]);
+ x.fillStyle="rgba(235,235,245,.45)";x.font="11px -apple-system,system-ui";x.fillText("$"+start,6,by-5);
+ for(const [col,clip] of [[cg,[0,0,W,by]],[cr,[0,by,W,H-by]]]){x.save();x.beginPath();x.rect(...clip);x.clip();
+  path();x.lineTo(P.at(-1)[0],by);x.lineTo(P[0][0],by);x.closePath();const g=x.createLinearGradient(0,clip[1],0,clip[1]+clip[3]);const up=col===cg;g.addColorStop(up?0:1,col+"55");g.addColorStop(up?1:0,col+"00");x.fillStyle=g;x.fill();
+  path();x.strokeStyle=col;x.lineWidth=2.5;x.lineJoin="round";x.lineCap="round";x.stroke();x.restore()}
+ const l=P.at(-1);x.beginPath();x.arc(l[0],l[1],4,0,7);x.fillStyle=S.stack>=start?cg:cr;x.fill()}
+function posRow(p){return`<div class="li"><a href="#/coin/${esc(p.mint)}" class="ico0">${logo(p.name,p.image||imgOf(p.mint),p.mint)}</a><a class="m" href="#/coin/${esc(p.mint)}"><div class="t">${esc(p.name)}</div><div class="s num">${usd(p.size_usd)} · stop <span class="mono">-${p.stop_pct}%</span></div></a>${ext(p.link,'Sell on FOMO','sell')}</div>`}
 const RMS={LIVE:15*60e3,"1H":36e5,"4H":4*36e5,"1D":864e5,"1W":7*864e5,ALL:1e15};
 let chartPrev=null;
 function drawChart(anim){const cv=$("#ch");if(!cv)return;const dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;const x=cv.getContext("2d");x.scale(dpr,dpr);
@@ -108,12 +142,20 @@ function cards(){const au=S.auditor.live,an=S.analyst.live,ex=S.executor.live,sc
  `<div class="ag"><div class="hd"><span class="nm">Executor</span>${st("executor")}</div><div class="k num">${S.executor.trades} trades</div><div class="ks num">${ex?`$${f2(ex.size)} · ${ex.pct.toFixed(2)}% of stack`:`${S.executor.stack_pct}% of stack per ticket`}</div><div class="ft">${ex?`<div class="up" style="font-size:15px">✓ Filled · ${esc(ex.name)}</div><div class="bar"><i style="width:100%"></i></div>`:'<div class="l3" style="font-size:14px">No tickets yet tonight.</div><div class="bar"><i style="width:0"></i></div>'}</div></div>`,
  `<div class="ag"><div class="hd"><span class="nm">Risk</span>${st("risk")}</div><div class="k">${S.risk.guarding?"Guarding":"Idle"}</div><div class="ks">Last exit · ${esc(S.risk.last_exit||"none yet")}</div><div class="ft" style="display:flex;gap:8px"><span class="pill p-r mono">stop -${S.risk.stop_pct}%</span><span class="pill p-g mono">trail ${S.risk.trail_pct}%</span></div></div>`].map((h,i)=>h.replace(/class="ag"/,`class="ag" style="--ac:${AC[i]}"`))}
 function carousel(){const c=cards();return`<div class="car">${c.join("")}</div><div class="dots">${c.map((_,i)=>`<i class="${i?"":"on"}"></i>`).join("")}</div>`}
-function agents(){return`<div class="pt">Agents</div>${carousel()}<div class="sh"><h2>Scanner feed</h2></div>${S.scanner.feed.length?`<div class="list nb">${S.scanner.feed.slice(0,15).map(f=>`<div class="li"><div class="m"><div class="t" style="${f.verdict==="pass"?"":"color:var(--l3);text-decoration:line-through;text-decoration-color:var(--r)"}">${f.verdict==="pass"?ext(f.link,esc(f.name||f.mint.slice(0,6))):esc(f.name||f.mint.slice(0,6))}</div></div><div class="v num ${f.verdict==="pass"?"up":"dn"}">${f.verdict==="pass"?`liq $${kfmt(f.liq)} · → auditor`:esc(f.reason)}</div></div>`).join("")}</div>`:`<div class="empty"><b>No pools yet</b>Scanner is listening for coins graduating to PumpSwap.</div>`}`}
+function agents(){return`<div class="pt">Agents</div>${carousel()}<div class="sh"><h2>Scanner feed</h2></div>${S.scanner.feed.length?`<div class="list nb">${S.scanner.feed.slice(0,15).map(f=>`<div class="li">${logo(f.name,f.image,f.mint,32)}<div class="m"><div class="t" style="${f.verdict==="pass"?"":"color:var(--l3);text-decoration:line-through;text-decoration-color:var(--r)"}">${f.verdict==="pass"?ext(f.link,esc(f.name||f.mint.slice(0,6))):esc(f.name||f.mint.slice(0,6))}</div></div><div class="v num ${f.verdict==="pass"?"up":"dn"}">${f.verdict==="pass"?`liq $${kfmt(f.liq)} · → auditor`:esc(f.reason)}</div></div>`).join("")}</div>`:`<div class="empty"><b>No pools yet</b>Scanner is listening for coins graduating to PumpSwap.</div>`}`}
 /* ---------- activity ---------- */
 function actIcon(k){return k==="buy"?["rgba(10,132,255,.2)","var(--b)","↗"]:k==="sell"?["rgba(0,211,90,.18)","var(--g)","$"]:k==="stop"?["rgba(255,69,58,.16)","var(--r)","!"]:["#2c2c2e","var(--l2)","×"]}
 function actList(it,emptyText){if(!it.length)return`<div class="list nb"><div class="empty" style="padding:28px 20px">${emptyText}</div></div>`;
- return`<div class="list">${it.map(a=>{const[bg,fg,g]=actIcon(a.kind);return`<a class="li" href="${a.mint?"#/coin/"+esc(a.mint):"#/activity"}"><div class="ico" style="background:${bg};color:${fg}">${g}</div><div class="m"><div class="t">${esc(a.title)}</div><div class="s">${esc(a.sub)}</div></div><div class="v num ${a.kind==="reject"?"l3":a.kind==="stop"?"dn":"up"}">${esc(a.value)}<div class="s l3">${time(a.ts)}</div></div></a>`}).join("")}</div>`}
-function activity(){const it=(A&&A.items)||[],f=SEG==="all"?it:it.filter(a=>SEG==="trades"?a.kind!=="reject":a.kind==="reject");
+ return`<div class="list">${it.map(a=>{const[bg,fg,g]=actIcon(a.kind);if(FLIP&&(a.kind==="buy"||a.kind==="sell"||a.kind==="stop"))return flipCard(a,bg,fg,g);return`<a class="li" href="${a.mint?"#/coin/"+esc(a.mint):"#/activity"}"><div class="ico" style="background:${bg};color:${fg}">${g}</div><div class="m"><div class="t">${esc(a.title)}</div><div class="s">${esc(a.sub)}</div></div><div class="v num ${a.kind==="reject"?"l3":a.kind==="stop"?"dn":"up"}">${esc(a.value)}<div class="s l3">${time(a.ts)}</div></div></a>`}).join("")}</div>`}
+let FLIP=false;const FLIPPED=new Set();
+function flipCard(a,bg,fg,g){const d=coinCache[a.mint],L=d?.audit?.layers||[],an=d?.analysis,on=FLIPPED.has(a.id);
+ const back=d===undefined?'<div class="l3" style="font-size:14px">Loading why…</div>':!L.length?'<div class="l3" style="font-size:14px">No audit saved for this coin.</div>':
+  `<div class="why">${L.map(l=>`<div class="wy"><span class="ck ${l.pass===true?"ok":l.pass===false?"bad":""}">${l.pass===true?"✓":l.pass===false?"✕":l.n}</span><span class="wn">${esc(l.name)}</span><span class="wv num">${esc(l.value)}</span></div>`).join("")}</div>${an?`<div class="l2 num" style="font-size:13px;margin-top:8px">Analyst score <b class="${an.passed?"up":"dn"}">${esc(an.score)}</b> · passes from ${esc(S.settings["analyst.min_score"])}</div>`:""}`;
+ return`<div class="fc${on?" on":""}" data-id="${esc(a.id)}" data-m="${esc(a.mint)}" role="button" tabindex="0" aria-pressed="${on}"><div class="fi"><div class="ff li">${a.mint?logo(a.title.replace(/^(Bought|Sold|Stopped out of|Stop)\s+/,""),imgOf(a.mint)||d?.image,a.mint):`<div class="ico" style="background:${bg};color:${fg}">${g}</div>`}<div class="m"><div class="t">${esc(a.title)}</div><div class="s">${esc(a.sub)} · <span style="color:var(--cy)">tap for why</span></div></div><div class="v num ${a.kind==="stop"?"dn":"up"}">${esc(a.value)}<div class="s l3">${time(a.ts)}</div></div></div>
+ <div class="fb"><div class="hd2"><b>Why the desk bought ${esc(a.title.replace(/^(Bought|Sold|Stopped out of|Stop)\s+/,""))}</b>${a.mint?`<a href="#/coin/${esc(a.mint)}" class="l2" style="font-size:13px">Coin ›</a>`:""}</div>${back}</div></div></div>`}
+function bindFlip(v){v.querySelectorAll(".fc").forEach(el=>{const t=e=>{if(e.target.closest("a"))return;const id=+el.dataset.id,m=el.dataset.m;FLIPPED.has(id)?FLIPPED.delete(id):FLIPPED.add(id);el.classList.toggle("on");el.classList.remove("anim");void el.offsetWidth;el.classList.add("anim");el.setAttribute("aria-pressed",el.classList.contains("on"));
+  if(m&&coinCache[m]===undefined){coinCache[m]=undefined;get("coin/"+m+".json").then(d=>{coinCache[m]=d;render()}).catch(()=>{coinCache[m]=null;render()})}};el.onclick=t;el.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();t(e)}}})}
+function activity(){FLIP=true;setTimeout(()=>FLIP=false);const it=(A&&A.items)||[],f=SEG==="all"?it:it.filter(a=>SEG==="trades"?a.kind!=="reject":a.kind==="reject");
  return`<div class="pt">Activity</div><div class="seg"><a href="#" data-s="all" class="${SEG==="all"?"on":""}">All</a><a href="#" data-s="trades" class="${SEG==="trades"?"on":""}">Trades</a><a href="#" data-s="rejects" class="${SEG==="rejects"?"on":""}">Rejects</a></div>${actList(f,"Nothing here yet tonight.")}`}
 /* ---------- auditor ---------- */
 function auditData(){const au=S.auditor.live,rec=S.auditor.recent;return au||rec[0]}
@@ -155,9 +197,16 @@ function drawCandles(){const cv=$("#cn"),m=(location.hash.match(/#\/coin\/(\w+)/
 function account(){const s=S.settings,sp=S.spec,row=(k,v,href)=>`${href?`<a class="li" href="${esc(href)}" target="_blank" rel="noopener">`:'<div class="li">'}<div class="m" style="font-size:16px">${k}</div><div class="v l2">${v}</div>${href?'<span class="chev">›</span></a>':"</div>"}`;
  const groups={scanner:"Scanner",auditor:"Auditor",analyst:"Analyst",executor:"Executor",risk:"Risk",desk:"Desk"};
  return`<div class="pt">Account</div><div class="list nb">${row("FOMO","@"+esc(s["desk.fomo_handle"]),S.profile_url)}${row("Invite a friend","Share",S.signup_url)}</div>
+ <div class="sh"><h2>Look &amp; feel</h2></div><div class="list nb">
+ <div class="li"><div class="m" style="font-size:16px">Theme</div><div class="seg2" role="radiogroup">${[["dark","Dark"],["neon","Neon"]].map(([k,t])=>`<button data-theme="${k}" class="${THEME()===k?"on":""}" role="radio" aria-checked="${THEME()===k}">${t}</button>`).join("")}</div></div>
+ <div class="li"><div class="m"><div style="font-size:16px">Win sound</div><div class="s l3" style="font-size:13px">Cha-ching + buzz on a win, only while the app is open</div></div><button class="tg ${SOUND()?"on":""}" id="snd" role="switch" aria-checked="${SOUND()}" aria-label="Win sound"><i></i></button></div>
+ <div class="li"><div class="m" style="font-size:16px">Test it</div><button class="mini" id="tst">Play win</button></div></div>
  <div class="sh"><h2>Desk</h2></div><div class="list nb">${row("Mode",`<span class="pill ${S.mode==="PAPER"?"p-o":"p-r"}">${S.mode}</span>`)}${row("Alerts",esc((S.notifier||"").split(" (")[0].replace(" webhook","")))}${row("Web push","Not available in plan B")}${row("Balance",`<span class="num">${usd(S.stack)}</span>`)}</div>
  <div class="l3" style="font-size:13px;margin:10px 4px 0">To change a setting, tell Grok Bot, for example “set stop to -8%”.</div>
  ${Object.entries(groups).map(([g,t])=>`<div class="sh"><h2>${t}</h2></div><div class="list nb">${Object.keys(s).filter(k=>k.startsWith(g+".")).map(k=>{const v=s[k],r=sp[k];return`<div class="setrow"><div class="lb"><span>${esc(k.split(".")[1].replace(/_/g," "))}</span><span class="mono l2 num">${esc(v)}</span></div>${typeof v==="number"&&r&&r[0]!=null?`<input type="range" style="--pc:${Math.max(0,Math.min(100,100*(v-r[0])/((r[1]-r[0])||1)))}%" min="${r[0]}" max="${r[1]}" step="any" value="${v}" disabled>`:""}</div>`}).join("")}</div>`).join("")}
  <div class="foot">New to FOMO? ${ext(S.signup_url,esc(S.signup_url))}</div>`}
-addEventListener("hashchange",()=>{render();poll()});addEventListener("resize",()=>{if(route()==="home")drawChart(false)});
+function bindAcct(v){v.querySelectorAll("[data-theme]").forEach(b=>b.onclick=()=>{localStorage.setItem("theme",b.dataset.theme);applyTheme();render()});
+ const s=v.querySelector("#snd");if(s)s.onclick=()=>{const on=!SOUND();localStorage.setItem("sound",on?"on":"off");if(on){unlockAudio();chaChing()}render()};
+ const t=v.querySelector("#tst");if(t)t.onclick=()=>{if(SOUND())unlockAudio();win();burstAt("#tst")}}
+addEventListener("hashchange",()=>{render();poll()});addEventListener("resize",()=>{if(route()==="home"){drawChart(false);drawPnl()}});
 render();poll();setInterval(poll,15000);
