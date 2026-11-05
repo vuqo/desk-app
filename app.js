@@ -63,7 +63,8 @@ function navbar(r){const h=$("#nav");
  const t={agents:"Agents",activity:"Activity",account:"Account"}[r];
  const handle=S?.settings?.["desk.fomo_handle"]||"";
  h.innerHTML=`<a class="av" href="#/account">${esc((handle[0]||"D").toUpperCase())}</a><a class="who" href="#/account">${t||'Grok Bot<span>›</span>'}</a>${ic("search","#/activity")}${ic("bell","#/activity")}`}
-function errRow(){const e=$("#err");if(ERR&&ERR!=="nolink"&&S){const n=Math.max(0,Math.round((NEXT-Date.now())/1000));e.hidden=false;e.textContent=`Desk offline · retrying in ${n}s · last update ${time(LAST||S.ts)}`}else e.hidden=true}
+function upd(){const n=$("#nav");if(!n||!S)return;let u=$("#upd");if(!u){u=document.createElement("span");u.id="upd";n.appendChild(u)}const a=Math.max(0,Math.round((Date.now()-(+new Date(S.ts)||LAST))/1000));u.textContent=a<60?`updated ${a}s ago`:`updated ${Math.round(a/60)}m ago`;u.className=a>90?"old":""}
+function errRow(){upd();const e=$("#err");if(ERR&&ERR!=="nolink"&&S){const n=Math.max(0,Math.round((NEXT-Date.now())/1000));e.hidden=false;e.textContent=`Desk offline · retrying in ${n}s · last update ${time(LAST||S.ts)}`}else e.hidden=true}
 setInterval(errRow,1000);
 function render(){const r=route();navbar(r);errRow();
  document.querySelectorAll("#tabs a").forEach(a=>a.classList.toggle("on",a.dataset.t===r||(r==="auditor"&&a.dataset.t==="agents")||(r==="coin"&&a.dataset.t==="home")));
@@ -86,7 +87,7 @@ function home(){const start=C?.start||S.settings?.["desk.paper_start_stack"]||S.
  <div class="chg num"><span class="${S.pnl_today>=0?"up":"dn"}">${S.pnl_today>=0?"+":"-"}$${f2(Math.abs(S.pnl_today))} (${pct>=0?"+":""}${pct.toFixed(2)}%)</span><span class="l2">Today</span><span class="pill p-g num">${mult.toFixed(2)}×</span></div></div>
  <canvas class="chart" id="ch"></canvas>
  <div class="range">${["LIVE","1H","4H","1D","1W","ALL"].map(r=>`<button data-r="${r}" class="${r===RANGE?"on":""}">${r}</button>`).join("")}</div>
- ${open.length?`<div class="sh"><h2>Open · ${open.length}</h2>${open.length>2?'<a href="#/activity">See all</a>':""}</div><div class="list">${open.slice(0,2).map(posRow).join("")}</div>`:""}
+ ${open.length?`<div class="sh"><h2>Open · ${open.length}</h2>${open.length>2?'<a href="#/activity">See all</a>':""}</div><div class="fillw hact"><div class="list">${open.slice(0,2).map(posRow).join("")}</div></div>`:""}
  <div class="sh"><h2>Profit &amp; loss</h2><span class="l2 num" style="font-size:15px">from ${usd(start)}</span></div><div class="pnlc"><canvas id="pnl"></canvas><div class="pnll num ${S.stack>=start?"up":"dn"}">${S.stack>=start?"+":"-"}$${f2(Math.abs(S.stack-start))} all time</div></div>
  <div class="sh"><h2>Agents · ${running} running</h2><a href="#/agents">All</a></div>${chips()}
  <div class="sh"><h2>Activity</h2><a href="#/activity">See all</a></div><div class="fillw hact">${actList(((A&&A.items)||[]).filter(a=>SR||a.kind!=="reject").slice(0,3),"No activity yet tonight. The desk writes here when a coin is rejected, bought or sold.")}</div>`}
@@ -210,5 +211,7 @@ function account(){const s=S.settings,sp=S.spec,row=(k,v,href)=>`${href?`<a clas
 function bindAcct(v){v.querySelectorAll("[data-theme]").forEach(b=>b.onclick=()=>{localStorage.setItem("theme",b.dataset.theme);applyTheme();render()});
  const s=v.querySelector("#snd");if(s)s.onclick=()=>{const on=!SOUND();localStorage.setItem("sound",on?"on":"off");if(on){unlockAudio();chaChing()}render()};
  const t=v.querySelector("#tst");if(t)t.onclick=()=>{if(SOUND())unlockAudio();win();burstAt("#tst")}}
-addEventListener("hashchange",()=>{render();poll()});addEventListener("resize",()=>{if(route()==="home"){drawChart(false);drawPnl()}});
-render();poll();setInterval(poll,15000);
+addEventListener("hashchange",()=>{render();tick()});addEventListener("resize",()=>{if(route()==="home"){drawChart(false);drawPnl()}});
+let BUSY=0;async function tick(){if(BUSY)return;BUSY=1;try{await poll()}finally{BUSY=0}}
+render();tick();setInterval(()=>{if(!document.hidden)tick()},15000);
+addEventListener("visibilitychange",()=>{if(!document.hidden)tick()});addEventListener("focus",tick);addEventListener("pageshow",tick);addEventListener("online",tick);
