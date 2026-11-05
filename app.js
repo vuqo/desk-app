@@ -7,6 +7,10 @@ const SUPA="https://alxvekhevjrehedmgpek.supabase.co/storage/v1/object/public/de
  if(h.get("d")){localStorage.setItem("dp",h.get("d"));const b=h.get("b");if(b&&b.startsWith("http://localhost"))localStorage.setItem("base",b);else localStorage.removeItem("base");if(h.get("k"))localStorage.setItem("ck",h.get("k"));history.replaceState(null,"",location.pathname+"#/"+(h.get("r")||"home"));}})();
 const DP=()=>localStorage.getItem("dp"),CK=()=>localStorage.getItem("ck"),BASE=()=>(localStorage.getItem("base")||SUPA)+DP()+"/";
 const RM=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const DESK_MQ=matchMedia("(min-width:1024px)");
+function isDesk(){return DESK_MQ.matches}
+function syncDeskClass(){document.body.classList.toggle("desk",isDesk())}
+syncDeskClass();DESK_MQ.addEventListener("change",()=>{syncDeskClass();LAST_SIG="";render(1);if(route()==="home")setTimeout(()=>drawChart(false),40)});
 let COINMISS={},S=null,A=null,C=null,ERR=null,LAST=0,coinCache={},RANGE=localStorage.getItem("range")||"ALL",NEXT=Date.now()+15000,SEG="all";
 const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const f2=v=>Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -100,7 +104,10 @@ function render(force){const r=route();navbar(r);errRow();
  if(r==="home"){rollOdo();bindHome(v);drawChart(false);maybeMilestone();maybeToasts();if(BALDIR&&!RM){const b=$(".big");b.classList.add(BALDIR>0?"gu":"gd");setTimeout(()=>b.classList.remove("gu","gd"),1400);if(BALDIR>0)burstAt(".big");}BALDIR=0;if(PENDBURST){burstAt(".big");win();PENDBURST=0}v.querySelectorAll(".range button").forEach(b=>b.onclick=()=>{RANGE=b.dataset.r;localStorage.setItem("range",RANGE);v.querySelectorAll(".range button").forEach(x=>x.classList.toggle("on",x===b));drawChart(true)})}
  if(r==="coin")drawCandles();if(r==="replay")rpBind(v);bindStars(v);if(r==="auditor")drawDisc();
  if(r==="activity"||r==="home")bindFlip(v);bindAcct(v);v.querySelectorAll(".seg a").forEach(a=>a.onclick=e=>{e.preventDefault();SEG=a.dataset.s;render()});
- if(r==="feed"){bindFeed(v);startFeedPoll()}else stopFeedPoll();if(r==="wallets")bindWallets(v);if(r==="home"||r==="wallets")bindMatch(v)}
+ if(r==="feed"){bindFeed(v);startFeedPoll()}
+ else if(r==="home"&&isDesk()){startFeedPoll();if(!FEED&&DP())get("feed.json").then(x=>{FEED=x;(x.items||[]).forEach(it=>FEEDSEEN[it.m]=FEEDSEEN[it.m]||2);render()}).catch(()=>{})}
+ else stopFeedPoll();
+ if(r==="wallets")bindWallets(v);if(r==="home"||r==="wallets")bindMatch(v)}
 function skeleton(r){const b=(h,w,mt,br)=>`<div class="sk" style="height:${h}px;${w?"width:"+w+";":""}margin-top:${mt||0}px;${br?"border-radius:"+br+"px":""}"></div>`,rows=n=>`<div class="list nb">${Array.from({length:n},()=>`<div class="li"><div class="sk" style="width:32px;height:32px;border-radius:50%"></div><div class="m">${b(12,"60%")}${b(10,"35%",6)}</div>${b(12,"20%")}</div>`).join("")}</div>`;
  r=r||route();if(r==="coin")return`<div class="skw"><div style="display:flex;gap:12px;align-items:center;margin-top:4px"><div class="sk" style="width:48px;height:48px;border-radius:50%"></div><div style="flex:1">${b(22,"55%")}${b(12,"30%",6)}</div></div>${b(160,"",12,16)}${b(48,"",8,24)}${b(18,"30%",16)}${rows(4)}</div>`;
  if(r==="agents"||r==="auditor")return`<div class="skw">${b(28,"40%",4)}${b(200,"",12,24)}${b(18,"35%",16)}${rows(5)}</div>`;
@@ -118,7 +125,7 @@ function home(){const start=C?.start||S.settings?.["desk.paper_start_stack"]||S.
  const age=Math.max(0,Math.round((Date.now()-(+new Date(S.ts)||LAST))/1000)),healthy=age<60;
  const paused=!!S.trading_paused;
  const acts=((A&&A.items)||[]).filter(a=>a.kind==="buy"||a.kind==="sell"||a.kind==="stop"||a.kind==="reject"||a.kind==="research").slice(0,12);
- return `<div class="homev12">
+ return `<div class="homev12${isDesk()?" desk-home":""}">
  <div class="home-sticky">
  <div class="hrow slim">${healthDot(healthy,age)}<span class="hchip muted">${S.mode}</span>
  <a class="hchip feed-jump" href="#/feed">Live · ${(S.feed&&S.feed.n)||(FEED&&FEED.n)||"–"}</a>
@@ -138,12 +145,30 @@ function home(){const start=C?.start||S.settings?.["desk.paper_start_stack"]||S.
   <div class="sh"><h2>Activity</h2><a href="#/activity">See all</a></div>
   <div class="act-home">${homeAct(acts)}</div>
  </div>
+ ${deskDashPanels()}
  </div>${SHEET?pnlSheet(start):""}${MATCHSHEET?matchSheet():""}`}
 function homeAct(it){if(!it.length)return`<div class="wempty">No activity yet tonight.</div>`;
  return`<div class="list">${it.map(a=>{const nm=(a.title||"").replace(/^(Bought|Sold|Stopped out of|Stop|Rejected|Researched|Skipped)\s+/i,"");
   const kind=a.kind||"";const[bg,fg,g]=actIcon(kind);
   const cls=kind==="sell"||(a.value||"").startsWith("+")?"up":kind==="stop"||kind==="reject"||(a.value||"").startsWith("-")?"dn":"";
   return`<a class="li" href="${a.mint?"#/coin/"+esc(a.mint):"#/activity"}">${a.mint?logo(nm,imgOf(a.mint),a.mint,36):`<div class="ico" style="background:${bg};color:${fg}">${g}</div>`}<div class="m"><div class="t">${esc(a.title)}</div><div class="s">${esc(a.sub)} · ${time(a.ts)}</div></div><div class="v num ${cls}">${esc(a.value||"")}</div></a>`}).join("")}</div>`}
+
+function deskDashPanels(){if(!isDesk())return"";
+ const open=(S.positions||[]).filter(p=>p.status==="open"||p.status==="exiting");
+ const inc=S.incubator||{},by=inc.by_source||{};
+ const feedItems=((FEED&&FEED.items)||[]).slice(0,8);
+ const cp=S.copy||{},wallets=(cp.wallets||[]).slice(0,8);
+ const all=deskCards();
+ return `<section class="dpanel desk-only desk-pos"><div class="dphd"><h2>Open positions</h2><span class="meta">${open.length}</span></div><div class="dpbody">${open.length?`<div class="list nb">${open.map(posRow).join("")}</div>`:`<div class="wempty">No open positions</div>`}</div></section>
+ <section class="dpanel desk-only desk-agents"><div class="dphd"><h2>Agents</h2><a href="#/agents">All</a></div><div class="dpbody"><div class="agrid">${all.join("")}</div></div></section>
+ <section class="dpanel desk-only desk-inc"><div class="dphd"><h2>Incubator</h2><span class="meta">${inc.incubating||0} watching</span></div><div class="dpbody">
+  <div class="inc-grid"><div class="ibox"><div class="n num">${inc.incubating||0}</div><div class="l">incubating</div></div>
+  <div class="ibox"><div class="n num up">${inc.promoted_24h||0}</div><div class="l">promoted 24h</div></div>
+  <div class="ibox"><div class="n num">${inc.expired_24h||0}</div><div class="l">expired 24h</div></div></div>
+  <div class="inc-src">${Object.keys(by).map(k=>`<span>${esc(k)} <b>${(by[k]&&by[k].incubating)||0}</b></span>`).join("")||'<span class="l3">No launchpads yet</span>'}</div>
+ </div></section>
+ <section class="dpanel desk-only desk-feed"><div class="dphd"><h2>Live feed</h2><a href="#/feed">${(FEED&&FEED.n)||feedItems.length||0} coins</a></div><div class="dpbody" id="deskFeedList">${feedItems.length?feedItems.map(feedRow).join(""):`<div class="wempty">Waiting for new coins</div>`}</div></section>
+ <section class="dpanel desk-only desk-wallets"><div class="dphd"><h2>Wallets</h2><a href="#/wallets">${cp.watching||wallets.length||0} watching</a></div><div class="dpbody">${wallets.length?wallets.map(w=>`<div class="wrow"><span class="ck">✓</span><div class="m"><div class="t">${esc(w.addr||w.id)}</div><div class="s">${esc(w.last||"idle")}</div></div><span class="pill-30">30d ${w.pnl_30d!=null?(w.pnl_30d>=0?"+":"")+f2(w.pnl_30d):"—"}</span></div>`).join(""):`<div class="wempty">Copy desk warming up</div>`}</div></section>`}
 function deskSection(){const cp=S.copy,n=cp?.watching??0;
  const hd=`<div class="desk-hd"><h2>Copy desk</h2><a class="sub" href="#/wallets">${n?n+" wallets":"Wallets"}</a></div>`;
  return hd+`<div class="desk-car" id="deskCar">${deskCards().join("")}</div>`}
@@ -471,7 +496,7 @@ const STLABEL={watching:"Watching",graduated:"Graduated",auditing:"Auditing",pas
 const CKLABEL={grad:"graduated",liq:"liquidity",mint:"mint/freeze",age:"pool age",lp:"LP locked",top10:"top10",dev:"dev %",bund:"bundled",score:"score"};
 function ageTxt(s){s=Math.max(0,s|0);if(s<60)return s+"s";if(s<3600)return Math.floor(s/60)+"m";return Math.floor(s/3600)+"h"+Math.floor((s%3600)/60)+"m"}
 function leftTxt(s){s=Math.max(0,s|0);const m=Math.floor(s/60),ss=s%60;return m+":"+String(ss).padStart(2,"0")}
-function startFeedPoll(){stopFeedPoll();let first=!FEED;const go=async()=>{if(route()!=="feed"||!DP()||document.hidden)return;try{const d=await get("feed.json");const sig=(d.ts||"")+"|"+(d.n||0)+"|"+((d.items||[]).map(i=>i.m+":"+i.st+":"+i.liq).join(","));if(sig===startFeedPoll._sig&&FEED){FEED.ts=d.ts;return}startFeedPoll._sig=sig;const prev={...FEEDPREV};(d.items||[]).forEach(it=>{if(!(it.m in FEEDSEEN))FEEDSEEN[it.m]=first?2:1;FEEDPREV[it.m]=it.st});first=0;FEED=Object.assign(d,{_prev:prev});render(1)}catch(e){}};
+function startFeedPoll(){stopFeedPoll();let first=!FEED;const go=async()=>{const r=route();if(!(r==="feed"||(r==="home"&&isDesk()))||!DP()||document.hidden)return;try{const d=await get("feed.json");const sig=(d.ts||"")+"|"+(d.n||0)+"|"+((d.items||[]).map(i=>i.m+":"+i.st+":"+i.liq).join(","));if(sig===startFeedPoll._sig&&FEED){FEED.ts=d.ts;return}startFeedPoll._sig=sig;const prev={...FEEDPREV};(d.items||[]).forEach(it=>{if(!(it.m in FEEDSEEN))FEEDSEEN[it.m]=first?2:1;FEEDPREV[it.m]=it.st});first=0;FEED=Object.assign(d,{_prev:prev});render(1)}catch(e){}};
  go();FEEDTIMER=setInterval(go,5000)}
 function stopFeedPoll(){if(FEEDTIMER){clearInterval(FEEDTIMER);FEEDTIMER=0}if(bindFeed._t){clearInterval(bindFeed._t);bindFeed._t=0}}
 function feed(){const d=FEED||{items:[],floor:(S.feed&&S.feed.floor)||10000,window_s:(S.feed&&S.feed.window_s)||3600,n:0,ts:S.feed&&S.feed.ts};
