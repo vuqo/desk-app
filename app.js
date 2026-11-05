@@ -4,8 +4,8 @@ let SR=localStorage.getItem('showRejects')==='1';function srT(){return`<a href="
 const DEMO0=/demo=sparkle/.test(location.hash);
 const SUPA="https://alxvekhevjrehedmgpek.supabase.co/storage/v1/object/public/desk/d/";
 (function(){const raw=location.hash.slice(1);if(!raw.includes("d="))return;const h=new URLSearchParams(raw);
- if(h.get("d")){localStorage.setItem("dp",h.get("d"));const b=h.get("b");if(b&&b.startsWith("http://localhost"))localStorage.setItem("base",b);else localStorage.removeItem("base");history.replaceState(null,"",location.pathname+"#/"+(h.get("r")||"home"));}})();
-const DP=()=>localStorage.getItem("dp"),BASE=()=>(localStorage.getItem("base")||SUPA)+DP()+"/";
+ if(h.get("d")){localStorage.setItem("dp",h.get("d"));const b=h.get("b");if(b&&b.startsWith("http://localhost"))localStorage.setItem("base",b);else localStorage.removeItem("base");if(h.get("k"))localStorage.setItem("ck",h.get("k"));history.replaceState(null,"",location.pathname+"#/"+(h.get("r")||"home"));}})();
+const DP=()=>localStorage.getItem("dp"),CK=()=>localStorage.getItem("ck"),BASE=()=>(localStorage.getItem("base")||SUPA)+DP()+"/";
 const RM=matchMedia("(prefers-reduced-motion: reduce)").matches;
 let COINMISS={},S=null,A=null,C=null,ERR=null,LAST=0,coinCache={},RANGE=localStorage.getItem("range")||"ALL",NEXT=Date.now()+15000,SEG="all";
 const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -19,7 +19,7 @@ async function poll(){if(!DP()){ERR="nolink";render();return}
  try{[S,A,C]=await Promise.all([get("state.json"),get("activity.json"),get("chart.json")]);ERR=null;LAST=Date.now();indexImgs();{const top=(A&&A.items||[]).filter(a=>a.kind==="buy"||(a.kind==="sell"&&!String(a.value).startsWith("-")));const mx=Math.max(0,...top.map(a=>+new Date(a.ts)||0));if(SEENTS&&mx>SEENTS)PENDBURST=1;SEENTS=Math.max(SEENTS||0,mx)||-1}
   const m=location.hash.match(/#\/(?:coin|replay)\/(\w+)/);if(m){const cd=await get("coin/"+m[1]+".json").catch(()=>null);if(cd)coinCache[m[1]]=cd;else COINMISS[m[1]]=1}
  }catch(e){ERR=e.message}NEXT=Date.now()+15000;render()}
-let prevStack=0,BALDIR=0,PENDBURST=0,SEENTS=0,P=[];const DEMO=DEMO0;
+let prevStack=0,BALDIR=0,PENDBURST=0,SEENTS=0,P=[],SHEET=0,SCRUB=null,CHSERIES=null,PAUSEBUSY=0;const DEMO=DEMO0;
 function burstAt(sel){if(RM)return;const el=$(sel);if(!el)return;const r=el.getBoundingClientRect(),cx=r.left+Math.min(r.width,260)/2,cy=r.top+r.height/2,cols=["#00d35a","#64d2ff","#ffd60a","#ff6b9a","#fff","#00d35a"];
  for(let i=0;i<70;i++){const a=Math.random()*6.283,v=2+Math.random()*6;P.push({x:cx,y:cy,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2.5,c:cols[i%6],s:2+Math.random()*3,l:1,st:Math.random()<.35,r:Math.random()*6})}}
 const TW=Array.from({length:22},()=>({x:Math.random(),y:Math.random(),s:.5+Math.random()*1.3,ph:Math.random()*6.28,v:.004+Math.random()*.008}));
@@ -74,7 +74,7 @@ function render(){const r=route();navbar(r);errRow();
  if(!S){v.innerHTML=ERR?`<div class="empty"><b>Desk offline</b>Can't reach your desk right now. Retrying every 15 seconds.</div>`:skeleton(r);return}
  v.dataset.r=r;v.innerHTML=({home,agents,auditor,coin,activity,account,replay}[r]||home)();
  const c2=v.querySelector(".car");if(c2){c2.scrollLeft=sl;c2.onscroll=()=>{const i=Math.round(c2.scrollLeft/(c2.firstElementChild.offsetWidth+12));v.querySelectorAll(".dots i").forEach((d,j)=>d.classList.toggle("on",j===i))}}
- if(r==="home"){drawChart(false);drawPnl();rollOdo();if(BALDIR&&!RM){const b=$(".big");b.classList.add(BALDIR>0?"gu":"gd");setTimeout(()=>b.classList.remove("gu","gd"),1400);if(BALDIR>0)burstAt(".big");}BALDIR=0;if(PENDBURST){burstAt(".big");win();PENDBURST=0}v.querySelectorAll(".range button").forEach(b=>b.onclick=()=>{RANGE=b.dataset.r;localStorage.setItem("range",RANGE);v.querySelectorAll(".range button").forEach(x=>x.classList.toggle("on",x===b));drawChart(true)})}
+ if(r==="home"){drawChart(false);rollOdo();bindHome(v);drawMiniCharts();if(BALDIR&&!RM){const b=$(".big");b.classList.add(BALDIR>0?"gu":"gd");setTimeout(()=>b.classList.remove("gu","gd"),1400);if(BALDIR>0)burstAt(".big");}BALDIR=0;if(PENDBURST){burstAt(".big");win();PENDBURST=0}v.querySelectorAll(".range button").forEach(b=>b.onclick=()=>{RANGE=b.dataset.r;localStorage.setItem("range",RANGE);v.querySelectorAll(".range button").forEach(x=>x.classList.toggle("on",x===b));drawChart(true)})}
  if(r==="coin")drawCandles();if(r==="replay")rpBind(v);bindStars(v);if(r==="auditor")drawDisc();
  if(r==="activity"||r==="home")bindFlip(v);bindAcct(v);v.querySelectorAll(".seg a").forEach(a=>a.onclick=e=>{e.preventDefault();SEG=a.dataset.s;render()})}
 function skeleton(r){const b=(h,w,mt,br)=>`<div class="sk" style="height:${h}px;${w?"width:"+w+";":""}margin-top:${mt||0}px;${br?"border-radius:"+br+"px":""}"></div>`,rows=n=>`<div class="list nb">${Array.from({length:n},()=>`<div class="li"><div class="sk" style="width:32px;height:32px;border-radius:50%"></div><div class="m">${b(12,"60%")}${b(10,"35%",6)}</div>${b(12,"20%")}</div>`).join("")}</div>`;
@@ -84,36 +84,57 @@ function skeleton(r){const b=(h,w,mt,br)=>`<div class="sk" style="height:${h}px;
  if(r==="account")return`<div class="skw">${b(28,"40%",4)}${b(110,"",12,16)}${b(160,"",16,16)}${b(200,"",16,16)}</div>`;
  return`<div class="skw">${b(26,"",4)}${b(46,"60%",8)}${b(16,"40%",8)}${b(120,"",12,16)}${b(30,"",8,10)}${b(18,"30%",12)}${rows(1)}${b(18,"35%",12)}${b(70,"",6,14)}${b(18,"40%",12)}${rows(2)}</div>`}
 function pair(){return`<div class="pt">Link your desk</div><div class="list nb" style="padding:20px 16px"><div class="l2" style="font-size:var(--t2)">Paste the desk link from your chat. It ends in <span class="mono">#d=…</span> and is saved on this phone only.</div><input id="lnk" class="f" placeholder="Paste link" autocomplete="off" autocapitalize="off"><button id="lnkb" class="btn">Link desk</button></div>`}
-function bindPair(){$("#lnkb").onclick=()=>{const m=($("#lnk").value||"").match(/[#&]d=([A-Za-z0-9_-]{32,})/);if(!m){alert("That link has no #d= part");return}localStorage.setItem("dp",m[1]);location.hash="#/home";location.reload()}}
+function bindPair(){$("#lnkb").onclick=()=>{const raw=$("#lnk").value||"",m=raw.match(/[#&]d=([A-Za-z0-9_-]{32,})/);if(!m){alert("That link has no #d= part");return}localStorage.setItem("dp",m[1]);const k=(raw.match(/[#&]k=([A-Za-z0-9_-]+)/)||[])[1];if(k)localStorage.setItem("ck",k);location.hash="#/home";location.reload()}}
 /* ---------- home ---------- */
-function home(){const start=C?.start||S.settings?.["desk.paper_start_stack"]||S.stack,pct=start?100*S.pnl_today/start:0,mult=start?S.stack/start:1;
+function home(){const start=C?.start||S.settings?.["desk.paper_start_stack"]||S.stack;
+ const tot=S.stack-start, tpct=start?100*tot/start:0, tdy=S.pnl_today||0;
  const bal="$"+f2(S.stack),html=odo(bal,prevBal);if(prevBal!=null&&prevBal!==bal)BALDIR=S.stack>prevStack?1:-1;prevBal=bal;prevStack=S.stack;
- const open=S.positions.filter(p=>p.status==="open"||p.status==="exiting");const running=Object.values(S.agents).filter(a=>a.alive&&!a.paused).length;
- return `${ticker()}<div class="bal"><canvas id="tw"></canvas><div class="row1"><div class="big num" aria-label="${bal}">${html}</div>${S.mode==="PAPER"?'<span class="pill p-o">PAPER</span>':'<span class="pill p-r">LIVE</span>'}</div>
- <div class="chg num"><span class="${S.pnl_today>=0?"up":"dn"}">${S.pnl_today>=0?"+":"-"}$${f2(Math.abs(S.pnl_today))} (${pct>=0?"+":""}${pct.toFixed(2)}%)</span><span class="l2">Today</span><span class="pill p-g num">${mult.toFixed(2)}×</span></div></div>
- <canvas class="chart" id="ch"></canvas>
- <div class="range">${["LIVE","1H","4H","1D","1W","ALL"].map(r=>`<button data-r="${r}" class="${r===RANGE?"on":""}">${r}</button>`).join("")}</div>
- ${open.length?`<div class="sh"><h2>Open · ${open.length}</h2>${open.length>2?'<a href="#/activity">See all</a>':""}</div><div class="fillw hact"><div class="list">${open.slice(0,2).map(posRow).join("")}</div></div>`:""}
- <div class="sh"><h2>Profit &amp; loss</h2><span class="l2 num" style="font-size:var(--t2)">from ${usd(start)}</span></div><div class="pnlc"><canvas id="pnl"></canvas><div class="pnll num ${S.stack>=start?"up":"dn"}">${S.stack>=start?"+":"-"}$${f2(Math.abs(S.stack-start))} all time</div></div>
- <div class="sh"><h2>Agents · ${running} running</h2><a href="#/agents">All</a></div>${chips()}
- <div class="sh"><h2>Activity</h2><a href="#/activity">See all</a></div><div class="fillw hact">${actList(((A&&A.items)||[]).filter(a=>SR||a.kind!=="reject").slice(0,3),"No activity yet tonight. The desk writes here when a coin is rejected, bought or sold.")}</div>`}
+ const open=S.positions.filter(p=>p.status==="open"||p.status==="exiting");
+ const age=Math.max(0,Math.round((Date.now()-(+new Date(S.ts)||LAST))/1000)),healthy=age<60;
+ const paused=!!S.trading_paused, stats=S.stats||{};
+ return `<div class="homev12">
+ <div class="hrow slim">${healthDot(healthy,age)}<span class="hchip muted">${S.mode}</span>
+ <button class="pause ${paused?"on":""}" id="pauseBtn" aria-pressed="${paused}">${paused?"▶ Resume":"⏸ Pause"}</button></div>
+ <div class="hero" id="heroTap" role="button" tabindex="0" aria-label="Open balance details">
+  <div class="hero-top"><div class="big num" aria-label="${bal}">${html}</div>${paused?'<span class="pill p-n">Paused</span>':""}</div>
+  <div class="hero-pnl num ${tot>=0?"up":"dn"}">${tot>=0?"+":"-"}$${f2(Math.abs(tot))} <span class="hero-pct">${tpct>=0?"+":""}${tpct.toFixed(2)}%</span></div>
+  <div class="hero-sub l2">All time · today <span class="num ${tdy>=0?"up":"dn"}">${tdy>=0?"+":"-"}$${f2(Math.abs(tdy))}</span>${SCRUB?` · <span class="scrub-inline">${esc(SCRUB.label)} <b class="${SCRUB.v>=start?"up":"dn"}">${usd(SCRUB.v)}</b></span>`:""}</div>
+ </div>
+ <div class="chwrap hero-ch"><canvas class="chart" id="ch"></canvas>
+  <div class="range">${["LIVE","1H","4H","1D","1W","ALL"].map(r=>`<button data-r="${r}" class="${r===RANGE?"on":""}">${r}</button>`).join("")}</div>
+  <div class="tap-hint">Drag chart for balance · tap balance for details</div>
+ </div>
+ <div class="car charts-car" id="chartCar">
+  ${chartCard("Daily P&L",`<canvas id="cDaily" class="mini-c"></canvas>`)}
+  ${chartCard("Win / loss",`<canvas id="cDonut" class="mini-c"></canvas><div class="donut-lbl num">${stats.win_rate!=null?stats.win_rate+"%":"—"}<span>win rate</span></div>`)}
+  ${chartCard("Per trade",`<canvas id="cTrades" class="mini-c"></canvas>`)}
+ </div>
+ <div class="dots charts-dots"><i class="on"></i><i></i><i></i></div>
+ ${open.length?`<div class="open-mini"><div class="sh"><h2>Open · ${open.length}</h2></div><div class="list">${open.slice(0,1).map(posRow).join("")}</div></div>`:""}
+ </div>${SHEET?pnlSheet(start):""}`}
+function chartCard(title,inner){return`<div class="ag chart-card"><div class="hd"><span class="nm">${title}</span></div><div class="cbody">${inner}</div></div>`}
+function healthDot(ok,age){return`<span class="hchip health" title="Desk data age"><i class="dot" style="background:${ok?"var(--g)":"var(--o)"}"></i>${ok?"Live":age+"s"}</span>`}
+function pnlSheet(start){const stats=S.stats||{},tot=S.stack-start,pct=start?100*tot/start:0,wr=stats.win_rate,inc=S.incubator||{},ds=S.daily_summary||{};
+ const row=(k,v,cls="")=>`<div class="li"><div class="m l2" style="font-size:var(--t2)">${k}</div><div class="v num ${cls}">${v}</div></div>`;
+ return`<div class="sheet" id="sheet"><div class="shdim" id="shdim"></div><div class="shpanel" role="dialog" aria-label="Balance details">
+ <div class="shgrab"></div><div class="pt" style="font-size:var(--t4);margin:0 0 var(--s2)">Balance</div>
+ <div class="sheet-charts"><canvas id="sDaily" class="sheet-c"></canvas><canvas id="sDonut" class="sheet-c"></canvas></div>
+ <div class="list nb">${row("Balance",usd(S.stack))}${row("Free cash",usd(S.free))}${row("Starting",usd(start))}
+ ${row("Total P&L",`${tot>=0?"+":"-"}$${f2(Math.abs(tot))} (${pct>=0?"+":""}${pct.toFixed(2)}%)`,tot>=0?"up":"dn")}
+ ${row("Today's P&L",`${(S.pnl_today||0)>=0?"+":"-"}$${f2(Math.abs(S.pnl_today||0))}`,(S.pnl_today||0)>=0?"up":"dn")}
+ ${row("Realised",usd(stats.realized),(stats.realized||0)>=0?"up":"dn")}${row("Open P&L",usd(stats.open_pnl),(stats.open_pnl||0)>=0?"up":"dn")}
+ ${row("Win rate",wr!=null?wr+"% · "+(stats.wins||0)+"W/"+(stats.losses||0)+"L":"—")}
+ ${row("Trades",stats.trades??"—")}
+ ${row("Best",stats.best?`${esc(stats.best.name)} +$${f2(stats.best.pnl)}`:"—","up")}
+ ${row("Worst",stats.worst?`${esc(stats.worst.name)} -$${f2(Math.abs(stats.worst.pnl))}`:"—","dn")}
+ ${row("Max drawdown","-$"+f2(stats.max_dd||0),"dn")}
+ ${row("Watching new",(inc.incubating||0)+" coins")}
+ ${row("Today's trades",(ds.trades??stats.trades_today??0)+(ds.final?" · final":""))}</div>
+ <button class="btn sec" id="shclose">Close</button></div></div>`}
 function ticker(){const seen=new Set(),it=[];for(const p of S.positions)if((p.status==="open"||p.status==="exiting")&&!seen.has(p.mint)){seen.add(p.mint);it.push({mint:p.mint,name:p.name,image:p.image,tag:"holding",h1:null,live:1})}
  for(const f of S.scanner.feed)if(f.verdict==="pass"&&!seen.has(f.mint)&&it.length<14){seen.add(f.mint);it.push({mint:f.mint,name:f.name,image:f.image,h1:f.h1,liq:f.liq,pass:f.verdict==="pass"})}
  if(!it.length)return"";const one=it.map(c=>`<a class="tk" href="#/coin/${esc(c.mint)}">${logo(c.name,c.image||imgOf(c.mint),c.mint,20)}<b>${esc((c.name||c.mint.slice(0,5)).slice(0,16))}</b>${c.live?'<span class="up">● holding</span>':c.h1!=null?`<span class="${c.h1>=0?"up":"dn"} num">${c.h1>=0?"+":""}${Number(c.h1).toFixed(1)}%</span>`:`<span class="l3 num">$${kfmt(c.liq)}</span>`}</a>`).join("");
  return`<div class="tkr${RM?" still":""}" aria-label="Coins the desk is watching"><div class="tkt" style="--n:${it.length}">${one}${RM?"":one}</div></div>`}
-function drawPnl(){const cv=$("#pnl");if(!cv)return;const dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;const x=cv.getContext("2d");x.scale(dpr,dpr);
- const start=C?.start||200,now=Date.now();let pts=((C&&C.points)||[]).map(p=>({t:+new Date(p.t),v:start+p.v}));const t0=pts.length?Math.min(pts[0].t-6e5,now-36e5):now-36e5;
- const s=[{t:t0,v:start},...pts,{t:now,v:S.stack}],vs=s.map(p=>p.v),mn=Math.min(...vs,start),mx=Math.max(...vs,start),sp=Math.max(mx-mn,start*.03),lo=mn-sp*.15,hi=mx+sp*.15;
- const X=t=>6+(t-t0)/((now-t0)||1)*(W-12),Y=v=>8+(hi-v)/(hi-lo)*(H-16),by=Y(start);
- // smooth path (monotone-ish catmull)
- const P=s.map(p=>[X(p.t),Y(p.v)]);const path=()=>{x.beginPath();x.moveTo(...P[0]);for(let i=0;i<P.length-1;i++){const p0=P[i-1]||P[i],p1=P[i],p2=P[i+1],p3=P[i+2]||p2,k=.18;x.bezierCurveTo(p1[0]+(p2[0]-p0[0])*k,p1[1]+(p2[1]-p0[1])*k,p2[0]-(p3[0]-p1[0])*k,p2[1]-(p3[1]-p1[1])*k,p2[0],p2[1])}};
- const G=getComputedStyle(document.documentElement),cg=G.getPropertyValue("--g").trim()||"#00d35a",cr=G.getPropertyValue("--r").trim()||"#ff453a";
- x.setLineDash([2,4]);x.strokeStyle="rgba(235,235,245,.28)";x.lineWidth=1;x.beginPath();x.moveTo(0,by);x.lineTo(W,by);x.stroke();x.setLineDash([]);
- x.fillStyle="rgba(235,235,245,.45)";x.font="11px -apple-system,system-ui";x.fillText("$"+start,6,by-5);
- for(const [col,clip] of [[cg,[0,0,W,by]],[cr,[0,by,W,H-by]]]){x.save();x.beginPath();x.rect(...clip);x.clip();
-  path();x.lineTo(P.at(-1)[0],by);x.lineTo(P[0][0],by);x.closePath();const g=x.createLinearGradient(0,clip[1],0,clip[1]+clip[3]);const up=col===cg;g.addColorStop(up?0:1,col+"55");g.addColorStop(up?1:0,col+"00");x.fillStyle=g;x.fill();
-  path();x.strokeStyle=col;x.lineWidth=2.5;x.lineJoin="round";x.lineCap="round";x.stroke();x.restore()}
- const l=P.at(-1);x.beginPath();x.arc(l[0],l[1],4,0,7);x.fillStyle=S.stack>=start?cg:cr;x.fill()}
 function posRow(p){return`<div class="li"><a href="#/coin/${esc(p.mint)}" class="ico0">${logo(p.name,p.image||imgOf(p.mint),p.mint)}</a><a class="m" href="#/coin/${esc(p.mint)}"><div class="t">${esc(p.name)}</div><div class="s num">${usd(p.size_usd)} · stop <span class="mono">-${p.stop_pct}%</span></div></a>${ext(p.link,'Sell on FOMO','sell')}</div>`}
 const RMS={LIVE:15*60e3,"1H":36e5,"4H":4*36e5,"1D":864e5,"1W":7*864e5,ALL:1e15};
 let chartPrev=null;
@@ -124,7 +145,7 @@ function drawChart(anim){const cv=$("#ch");if(!cv)return;const dpr=devicePixelRa
  const vs=series.map(p=>p.v).concat(start),mn=Math.min(...vs),mx=Math.max(...vs),span=Math.max(mx-mn,(start||1)*.04),mid=(mx+mn)/2,pad=0;const mn2=mid-span*.6,mx2=mid+span*.6;
  const sx=t=>(t-t0)/((now-t0)||1)*(W-8)+4,sy=v=>H-14-(v-mn2)/(mx2-mn2)*(H-28);
  const up=S.stack>=start,col=up?"#00d35a":"#ff453a";
- const target=series.map(p=>[sx(p.t),sy(p.v)]);const from=chartPrev&&chartPrev.length===target.length&&anim!==false?chartPrev:target;chartPrev=target;
+ const target=series.map(p=>[sx(p.t),sy(p.v)]);CHSERIES=series.map(p=>({t:p.t,v:p.v}));const from=chartPrev&&chartPrev.length===target.length&&anim!==false?chartPrev:target;chartPrev=target;
  const t1=performance.now();
  function frame(){const k=RM?1:Math.min(1,(performance.now()-t1)/250),e=1-Math.pow(1-k,3),P=target.map((p,i)=>[p[0],from[i][1]+(p[1]-from[i][1])*e]);
   x.clearRect(0,0,W,H);
@@ -136,19 +157,61 @@ function drawChart(anim){const cv=$("#ch");if(!cv)return;const dpr=devicePixelRa
   const l=P.at(-1);x.beginPath();x.arc(l[0]-2,l[1],4.5,0,7);x.fillStyle=col;x.fill();
   if(k<1)requestAnimationFrame(frame)}
  frame()}
+/* ---------- home binds + mini charts ---------- */
+function bindHome(v){
+ const hero=$("#heroTap");if(hero){const open=e=>{if(e.target.closest&&e.target.closest(".pause,#ch,.range,.charts-car,.open-mini"))return;SHEET=1;render()};hero.onclick=open;hero.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();open(e)}}};
+ const dim=$("#shdim"),cl=$("#shclose");if(dim)dim.onclick=()=>{SHEET=0;render()};if(cl)cl.onclick=()=>{SHEET=0;render()};
+ const pb=$("#pauseBtn");if(pb)pb.onclick=e=>{e.preventDefault();e.stopPropagation();togglePause()};
+ const car=v.querySelector("#chartCar");if(car){car.onscroll=()=>{const w=(car.firstElementChild?.offsetWidth||1)+12;const i=Math.round(car.scrollLeft/w);v.querySelectorAll(".charts-dots i").forEach((d,j)=>d.classList.toggle("on",j===i))}}
+ const cv=$("#ch");if(cv&&CHSERIES&&CHSERIES.length){
+  const hit=ev=>{const r=cv.getBoundingClientRect(),x=((ev.touches?ev.touches[0].clientX:ev.clientX)-r.left)/Math.max(1,r.width);
+   const t0=CHSERIES[0].t,t1=CHSERIES.at(-1).t,tt=t0+Math.max(0,Math.min(1,x))*(t1-t0);
+   const best=CHSERIES.reduce((a,p)=>Math.abs(p.t-tt)<Math.abs(a.t-tt)?p:a);
+   const d=new Date(best.t),label=d.toLocaleString([],{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+   SCRUB={v:best.v,label};const el=v.querySelector(".scrub-inline");const start=C?.start||200;
+   if(el)el.innerHTML=`${esc(label)} <b class="${best.v>=start?"up":"dn"}">${usd(best.v)}</b>`; else render();
+  };
+  let dragging=0;
+  cv.onpointerdown=ev=>{dragging=1;ev.stopPropagation();cv.setPointerCapture?.(ev.pointerId);hit(ev)};
+  cv.onpointermove=ev=>{if(dragging)hit(ev)};
+  cv.onpointerup=cv.onpointercancel=()=>{dragging=0};
+ }
+}
+async function togglePause(){if(PAUSEBUSY)return;const put=S?.control_put,k=CK();
+ if(!put){alert("Pause link not ready yet — wait for the next desk update.");return}
+ if(!k){alert("This phone is missing the pause key. Ask Grok Bot for a fresh desk link with &k=…");return}
+ PAUSEBUSY=1;const want=!S.trading_paused;try{
+  const r=await fetch(put,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({paused:want,k,ts:new Date().toISOString()})});
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  S.trading_paused=want;render();setTimeout(()=>tick(),800);
+ }catch(e){alert("Couldn't update pause ("+e.message+"). Try again in a moment.")}
+ finally{PAUSEBUSY=0}}
+function drawMiniCharts(){const stats=S?.stats||{},G=getComputedStyle(document.documentElement),cg=G.getPropertyValue("--g").trim()||"#00d35a",cr=G.getPropertyValue("--r").trim()||"#ff453a",cl=G.getPropertyValue("--l3").trim()||"rgba(235,235,245,.3)";
+ const fit=(id)=>{const cv=$(id);if(!cv)return null;const dpr=devicePixelRatio||1,W=cv.clientWidth||(cv.parentElement&&cv.parentElement.clientWidth)||280,H=cv.clientHeight||100;cv.width=W*dpr;cv.height=H*dpr;const x=cv.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);return{x,W,H}};
+ const bars=(id,items,key)=>{const c=fit(id);if(!c)return;if(!items||!items.length){c.x.fillStyle=cl;c.x.font="12px -apple-system,system-ui";c.x.textAlign="center";c.x.fillText("No trades yet",c.W/2,c.H/2);return}
+  const vs=items.map(i=>i[key]),mx=Math.max(...vs.map(Math.abs),1),n=items.length,gap=4,bw=(c.W-gap*(n+1))/n,mid=c.H*0.55;
+  c.x.strokeStyle=cl;c.x.setLineDash([3,4]);c.x.beginPath();c.x.moveTo(0,mid);c.x.lineTo(c.W,mid);c.x.stroke();c.x.setLineDash([]);
+  items.forEach((it,i)=>{const v=it[key],h=Math.max(2,(Math.abs(v)/mx)*(c.H*0.4)),x0=gap+i*(bw+gap),y=v>=0?mid-h:mid;c.x.fillStyle=v>=0?cg:cr;c.x.fillRect(x0,y,bw,h)})};
+ const donut=(id)=>{const c=fit(id);if(!c)return;const w=stats.wins||0,l=stats.losses||0,tot=w+l,cx=c.W/2,cy=c.H/2,R=Math.min(cx,cy)-8,r=R*0.62;
+  const arc=(a0,a1,col)=>{c.x.beginPath();c.x.arc(cx,cy,R,a0,a1);c.x.arc(cx,cy,r,a1,a0,true);c.x.closePath();c.x.fillStyle=col;c.x.fill()};
+  if(!tot){c.x.beginPath();c.x.arc(cx,cy,R,0,7);c.x.arc(cx,cy,r,7,0,true);c.x.fillStyle=cl;c.x.fill();return}
+  const a=w/tot*Math.PI*2;arc(-Math.PI/2,-Math.PI/2+a,cg);arc(-Math.PI/2+a,-Math.PI/2+Math.PI*2,cr)};
+ bars("#cDaily",stats.daily||[],"pnl");bars("#cTrades",stats.trade_pnls||[],"pnl");donut("#cDonut");
+ if(SHEET){bars("#sDaily",stats.daily||[],"pnl");donut("#sDonut")}
+}
 /* ---------- agents ---------- */
-function st(a){const s=S.agents[a]||{};return s.paused?`<span class="pill p-n">Paused</span>`:s.alive?`<span class="pill p-g"><i class="dot" style="background:var(--g)"></i>Live</span>`:`<span class="pill p-r">Down</span>`}
+function agentSt(a){const s=S.agents[a]||{};return s.paused?`<span class="pill p-n">Paused</span>`:s.alive?`<span class="pill p-g"><i class="dot" style="background:var(--g)"></i>Live</span>`:`<span class="pill p-r">Down</span>`}
 const AC=["#64d2ff","#0a84ff","#ffd60a","#00d35a","#ff6b9a"];
 function cards(){const au=S.auditor.live,an=S.analyst.live,ex=S.executor.live,sc=S.scanner;
  const feed=sc.feed.filter(f=>SR||f.verdict==="pass").slice(0,3).map(f=>f.verdict==="pass"?`<div class="r"><span>${ext(f.link,esc(f.name||f.mint.slice(0,6)))}</span><span class="up num">liq $${kfmt(f.liq)} · → auditor</span></div>`:`<div class="r"><span class="x">${esc(f.name||f.mint.slice(0,6))}</span><span class="dn">${esc(f.reason)}</span></div>`).join("");
  const ring=s=>{const r=40,c=2*Math.PI*r,f=(s||0)/100,ok=s>=S.settings["analyst.min_score"];return`<svg width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="${r}" stroke="#2c2c2e" stroke-width="9" fill="none"/><circle cx="50" cy="50" r="${r}" stroke="${s==null?"#2c2c2e":ok?"#00d35a":"#ff9f0a"}" stroke-width="9" fill="none" stroke-linecap="round" stroke-dasharray="${c*f} ${c}" transform="rotate(-90 50 50)"/><text x="50" y="58" text-anchor="middle" fill="#fff" style="font:600 26px -apple-system,system-ui;font-variant-numeric:tabular-nums">${s??"–"}</text></svg>`};
  const strips=L=>`<div class="strips">${[1,2,3,4,5,6,7,8].map(n=>{const l=(L||[]).find(x=>x.n===n);return`<i class="${!l?"":l.pass===true?"ok":l.pass===false?"bad":""}"></i>`}).join("")}</div>`;
  return [
- `<div class="ag"><div class="hd"><span class="nm">Scanner</span>${st("scanner")}</div><div class="k num">${sc.pools} pools</div><div class="ks num">${sc.waiting} in the waiting room</div><div class="ft feed">${feed||'<div class="l3" style="font-size:var(--t2)">Waiting for the first graduation tonight.</div>'}</div></div>`,
- `<a class="ag" href="#/auditor"><div class="hd"><span class="nm">Auditor</span>${st("auditor")}</div><div class="k num">${S.auditor.taken} taken apart</div><div class="ks num">${S.auditor.rejected} rejected</div><div class="ft">${au?`<div style="font-size:var(--t2)">${esc(au.name||au.mint.slice(0,6))} <span class="${au.running?"l2":au.passed?"up":"dn"}">· ${au.running?"taking apart…":au.passed?"8/8 → Analyst":esc(au.reason)}</span></div>${strips(au.layers)}`:'<div class="l3" style="font-size:var(--t2)">Nothing to audit yet.</div>'+strips([])}</div></a>`,
- `<div class="ag"><div class="hd"><span class="nm">Analyst${S.analyst.mode==="rules"?" · rules":""}</span>${st("analyst")}</div><div class="k num">${S.analyst.scored} scored</div><div class="ks">Passes from <span class="mono">${S.settings["analyst.min_score"]}</span></div><div class="ft" style="display:flex;align-items:center;gap:14px">${ring(an?.score)}<div style="font-size:var(--t2)">${an?`${esc(an.name)}<div class="${an.passed?"up":"dn"}">${an.passed?"Pass":"Reject"}</div>`:'<span class="l3">Scoring the next coin that clears the Auditor.</span>'}</div></div></div>`,
- `<div class="ag"><div class="hd"><span class="nm">Executor</span>${st("executor")}</div><div class="k num">${S.executor.trades} trades</div><div class="ks num">${ex?`$${f2(ex.size)} · ${ex.pct.toFixed(2)}% of stack`:`${S.executor.stack_pct}% of stack per ticket`}</div><div class="ft">${ex?`<div class="up" style="font-size:var(--t2)">✓ Filled · ${esc(ex.name)}</div><div class="bar"><i style="width:100%"></i></div>`:'<div class="l3" style="font-size:var(--t2)">No tickets yet tonight.</div><div class="bar"><i style="width:0"></i></div>'}</div></div>`,
- `<div class="ag"><div class="hd"><span class="nm">Risk</span>${st("risk")}</div><div class="k">${S.risk.guarding?"Guarding":"Idle"}</div><div class="ks">Last exit · ${esc(S.risk.last_exit||"none yet")}</div><div class="ft" style="display:flex;gap:8px"><span class="pill p-r mono">stop -${S.risk.stop_pct}%</span><span class="pill p-g mono">trail ${S.risk.trail_pct}%</span></div></div>`].map((h,i)=>h.replace(/class="ag"/,`class="ag" style="--ac:${AC[i]}"`))}
+ `<div class="ag"><div class="hd"><span class="nm">Scanner</span>${agentSt("scanner")}</div><div class="k num">${sc.pools} pools</div><div class="ks num">${sc.waiting} in the waiting room</div><div class="ft feed">${feed||'<div class="l3" style="font-size:var(--t2)">Waiting for the first graduation tonight.</div>'}</div></div>`,
+ `<a class="ag" href="#/auditor"><div class="hd"><span class="nm">Auditor</span>${agentSt("auditor")}</div><div class="k num">${S.auditor.taken} taken apart</div><div class="ks num">${S.auditor.rejected} rejected</div><div class="ft">${au?`<div style="font-size:var(--t2)">${esc(au.name||au.mint.slice(0,6))} <span class="${au.running?"l2":au.passed?"up":"dn"}">· ${au.running?"taking apart…":au.passed?"8/8 → Analyst":esc(au.reason)}</span></div>${strips(au.layers)}`:'<div class="l3" style="font-size:var(--t2)">Nothing to audit yet.</div>'+strips([])}</div></a>`,
+ `<div class="ag"><div class="hd"><span class="nm">Analyst${S.analyst.mode==="rules"?" · rules":""}</span>${agentSt("analyst")}</div><div class="k num">${S.analyst.scored} scored</div><div class="ks">Passes from <span class="mono">${S.settings["analyst.min_score"]}</span></div><div class="ft" style="display:flex;align-items:center;gap:14px">${ring(an?.score)}<div style="font-size:var(--t2)">${an?`${esc(an.name)}<div class="${an.passed?"up":"dn"}">${an.passed?"Pass":"Reject"}</div>`:'<span class="l3">Scoring the next coin that clears the Auditor.</span>'}</div></div></div>`,
+ `<div class="ag"><div class="hd"><span class="nm">Executor</span>${agentSt("executor")}</div><div class="k num">${S.executor.trades} trades</div><div class="ks num">${ex?`$${f2(ex.size)} · ${ex.pct.toFixed(2)}% of stack`:`${S.executor.stack_pct}% of stack per ticket`}</div><div class="ft">${ex?`<div class="up" style="font-size:var(--t2)">✓ Filled · ${esc(ex.name)}</div><div class="bar"><i style="width:100%"></i></div>`:'<div class="l3" style="font-size:var(--t2)">No tickets yet tonight.</div><div class="bar"><i style="width:0"></i></div>'}</div></div>`,
+ `<div class="ag"><div class="hd"><span class="nm">Risk</span>${agentSt("risk")}</div><div class="k">${S.risk.guarding?"Guarding":"Idle"}</div><div class="ks">Last exit · ${esc(S.risk.last_exit||"none yet")}</div><div class="ft" style="display:flex;gap:8px"><span class="pill p-r mono">stop -${S.risk.stop_pct}%</span><span class="pill p-g mono">trail ${S.risk.trail_pct}%</span></div></div>`].map((h,i)=>h.replace(/class="ag"/,`class="ag" style="--ac:${AC[i]}"`))}
 function chips(){return`<a class="chips" href="#/agents">${["scanner","auditor","analyst","executor","risk"].map((a,i)=>{const g=S.agents[a]||{};return`<span class="chip" style="--ac:${AC[i]}"><i class="dot" style="background:${g.paused?"var(--l3)":g.alive?AC[i]:"var(--r)"}"></i>${a[0].toUpperCase()+a.slice(1)}</span>`}).join("")}</a>`}
 function carousel(){const c=cards();return`<div class="car">${c.join("")}</div><div class="dots">${c.map((_,i)=>`<i class="${i?"":"on"}"></i>`).join("")}</div>`}
 function agents(){return`<div class="pt">Agents</div>${carousel()}${watchSec()}<div class="sh"><h2>Scanner feed</h2>${srT()}</div>${S.scanner.feed.filter(f=>SR||f.verdict==="pass").length?`<div class="list nb fill">${S.scanner.feed.filter(f=>SR||f.verdict==="pass").slice(0,15).map(f=>`<a class="li" href="#/coin/${esc(f.mint)}">${star(f.mint,f.name,1)}${logo(f.name,f.image,f.mint,32)}<div class="m"><div class="t" style="${f.verdict==="pass"?"":"color:var(--l3);text-decoration:line-through;text-decoration-color:var(--r)"}">${esc(f.name||f.mint.slice(0,6))}</div></div><div class="v num ${f.verdict==="pass"?"up":"dn"}">${f.verdict==="pass"?`liq $${kfmt(f.liq)} · → auditor`:esc(f.reason)}</div></a>`).join("")}</div>`:`<div class="empty"><b>${S.scanner.feed.length?"No passes yet":"No pools yet"}</b>${S.scanner.feed.length?S.scanner.feed.length+" rejects hidden. Coins that pass show up here.":"Scanner is listening for coins graduating to PumpSwap."}</div>`}`}
@@ -226,7 +289,7 @@ function account(){const s=S.settings,sp=S.spec,row=(k,v,href)=>`${href?`<a clas
 function bindAcct(v){v.querySelectorAll("[data-theme]").forEach(b=>b.onclick=()=>{localStorage.setItem("theme",b.dataset.theme);applyTheme();render()});
  const s=v.querySelector("#snd");if(s)s.onclick=()=>{const on=!SOUND();localStorage.setItem("sound",on?"on":"off");if(on){unlockAudio();chaChing()}render()};
  const t=v.querySelector("#tst");if(t)t.onclick=()=>{if(SOUND())unlockAudio();win();burstAt("#tst")}}
-addEventListener("hashchange",()=>{render();const m=(location.hash.match(/#\/(?:coin|replay)\/(\w+)/)||[])[1];if(m&&!coinCache[m]&&DP())get("coin/"+m+".json").then(d=>{coinCache[m]=d;render()}).catch(()=>{COINMISS[m]=1;render()});tick()});addEventListener("resize",()=>{if(route()==="home"){drawChart(false);drawPnl()}});
+addEventListener("hashchange",()=>{render();const m=(location.hash.match(/#\/(?:coin|replay)\/(\w+)/)||[])[1];if(m&&!coinCache[m]&&DP())get("coin/"+m+".json").then(d=>{coinCache[m]=d;render()}).catch(()=>{COINMISS[m]=1;render()});tick()});addEventListener("resize",()=>{if(route()==="home"){drawChart(false);drawMiniCharts()}});
 let BUSY=0;async function tick(){if(BUSY)return;BUSY=1;try{await poll()}finally{BUSY=0}}
 (function(){const v=$("#view"),ind=document.createElement("div");ind.id="ptr";ind.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 4v12m0 0-5-5m5 5 5-5"/></svg>';document.body.appendChild(ind);
  let y0=null,dy=0,act=0;const T=64,top=()=>{const n=v.getBoundingClientRect().top;ind.style.top=n+"px"};
