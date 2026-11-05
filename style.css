@@ -66,3 +66,15 @@ nav a{flex:1;min-height:44px;display:flex;flex-direction:column;align-items:cent
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .sell{flex:none;display:inline-flex;align-items:center;min-height:36px;padding:0 16px;border-radius:18px;background:var(--g);color:#000;font:600 15px var(--text)}
 .li .v{max-width:48%;font-size:14px}.li .v .s{margin-top:2px}
+/* v3 colour */
+.ag::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 100% 0%,color-mix(in srgb,var(--ac) 22%,transparent),transparent 55%);pointer-events:none}
+.ag>*{position:relative}.ag .k{color:var(--ac)}
+.ag .nm{display:flex;align-items:center;gap:8px;color:#fff}.ag .nm::before{content:"";width:22px;height:22px;border-radius:7px;background:color-mix(in srgb,var(--ac) 22%,transparent);box-shadow:inset 0 0 0 5px color-mix(in srgb,var(--ac) 0%,transparent);background-image:radial-gradient(circle,var(--ac) 0 4px,transparent 5px)}
+#fx{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:50}
+.bal{position:relative}.bal>*{position:relative}#tw{position:absolute;left:-16px;right:-16px;top:-10px;bottom:-10px;width:calc(100% + 32px);height:calc(100% + 20px);pointer-events:none}
+.big{transition:text-shadow .5s,color .5s}.big.gu{color:#d6ffe6;text-shadow:0 0 22px rgba(0,211,90,.55)}.big.gd{color:#ffd9d6;text-shadow:0 0 22px rgba(255,69,58,.5)}
+#tabs a.on[data-t=home]{color:var(--g)}#tabs a.on[data-t=agents]{color:var(--cy)}#tabs a.on[data-t=activity]{color:var(--y)}#tabs a.on[data-t=account]{color:var(--pk)}
+.setrow input[type=range]{-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--g) var(--pc),#3a3a3c var(--pc));opacity:1;margin:14px 0 6px}
+.setrow input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.35),0 0 0 .5px rgba(0,0,0,.04)}
+.setrow input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:0}
+@media (prefers-reduced-motion:reduce){#fx,#tw{display:none}.big.gu,.big.gd{text-shadow:none;color:#fff}}
