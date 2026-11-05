@@ -107,3 +107,4 @@ html[data-theme=neon] .list,html[data-theme=neon] .ag,html[data-theme=neon] .pnl
 html[data-theme=neon] .range button.on{box-shadow:0 0 14px rgba(57,255,136,.6)}
 html[data-theme=neon] .sh h2{background:linear-gradient(90deg,#00f0ff,#ff4fd8);-webkit-background-clip:text;background-clip:text;color:transparent}
 @media (prefers-reduced-motion:reduce){.fc.anim .fi{animation:none}.tkt{animation:none}.tkr{overflow-x:auto}}
+.srt{font-size:13px;font-weight:500;color:var(--l3);float:right;margin-left:auto;text-decoration:none}
