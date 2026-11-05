@@ -171,3 +171,17 @@ main{padding:0 var(--s4) var(--s2)}
 main{overscroll-behavior-y:contain}
 #view[data-r=home]{--row:44px}#view[data-r=home] .sh{margin:var(--s2) 0 var(--s1)}#view[data-r=home] .li{padding-block:var(--s1)}
 #view[data-r=home] .tkr{margin-bottom:0}#view[data-r=home] .range{margin-bottom:0}#view[data-r=home] .chips .chip{padding-block:3px}
+/* v10 watchlist + replay */
+.star{flex:none;border:0;background:none;color:var(--l3);font-size:22px;line-height:1;padding:var(--s1);margin:calc(-1*var(--s1));cursor:pointer}.star.on{color:var(--y)}.star.sm{font-size:18px}
+.bdg{height:18px;font-size:10px;padding:0 6px;margin-left:var(--s1);vertical-align:middle}
+.wl{max-height:30dvh;overflow-y:auto}
+.cdb{display:flex;gap:var(--s2);align-items:center;margin-top:var(--s3)}.cdb .btn{margin:0;flex:1;min-height:40px;font-size:var(--t2)}.cdb .star{font-size:26px;padding:0 var(--s2)}
+.rpb{display:inline-block;margin-top:var(--s2);padding:var(--s1) var(--s3);border-radius:14px;background:var(--c2);color:var(--g);font:600 var(--t1) var(--text)}
+.rpw{display:flex;flex-direction:column;flex:1;min-height:0}
+.tip{display:flex;flex-direction:column;gap:2px;background:color-mix(in srgb,var(--cy) 10%,var(--c1));border:1px solid color-mix(in srgb,var(--cy) 30%,transparent);border-radius:12px;padding:var(--s2) var(--s3);font-size:var(--t1);color:var(--l2)}.tip>b{color:var(--cy);font-size:var(--t1)}.tip span b{color:#fff}
+.rpbar{height:4px;border-radius:2px;background:var(--c2);overflow:hidden}.rpbar i{display:block;height:100%;background:var(--g);transition:width .1s linear}
+.rpctl{display:flex;justify-content:center;gap:var(--s5);margin:var(--s2) 0}.rpctl button{width:44px;height:44px;border-radius:50%;border:0;background:var(--c2);color:#fff;font-size:18px}.rpctl .pp{background:var(--g);color:#000}
+.rps{flex:1 1 0;min-height:100px;overflow-y:auto}
+.rpst{min-height:40px!important;cursor:pointer;transition:opacity .25s,background .25s}.rpst.todo{opacity:.35}.rpst.cur{background:color-mix(in srgb,var(--g) 12%,transparent)}
+.rpi{width:24px;text-align:center;flex:none}
+@media (prefers-reduced-motion:reduce){.rpst,.rpbar i{transition:none}}

@@ -17,7 +17,7 @@ const time=t=>t?new Date(t).toLocaleTimeString([], {hour:"numeric",minute:"2-dig
 async function get(p){const r=await fetch(BASE()+p+"?t="+Date.now(),{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}
 async function poll(){if(!DP()){ERR="nolink";render();return}
  try{[S,A,C]=await Promise.all([get("state.json"),get("activity.json"),get("chart.json")]);ERR=null;LAST=Date.now();indexImgs();{const top=(A&&A.items||[]).filter(a=>a.kind==="buy"||(a.kind==="sell"&&!String(a.value).startsWith("-")));const mx=Math.max(0,...top.map(a=>+new Date(a.ts)||0));if(SEENTS&&mx>SEENTS)PENDBURST=1;SEENTS=Math.max(SEENTS||0,mx)||-1}
-  const m=location.hash.match(/#\/coin\/(\w+)/);if(m){const cd=await get("coin/"+m[1]+".json").catch(()=>null);if(cd)coinCache[m[1]]=cd;else COINMISS[m[1]]=1}
+  const m=location.hash.match(/#\/(?:coin|replay)\/(\w+)/);if(m){const cd=await get("coin/"+m[1]+".json").catch(()=>null);if(cd)coinCache[m[1]]=cd;else COINMISS[m[1]]=1}
  }catch(e){ERR=e.message}NEXT=Date.now()+15000;render()}
 let prevStack=0,BALDIR=0,PENDBURST=0,SEENTS=0,P=[];const DEMO=DEMO0;
 function burstAt(sel){if(RM)return;const el=$(sel);if(!el)return;const r=el.getBoundingClientRect(),cx=r.left+Math.min(r.width,260)/2,cy=r.top+r.height/2,cols=["#00d35a","#64d2ff","#ffd60a","#ff6b9a","#fff","#00d35a"];
@@ -59,6 +59,7 @@ function rollOdo(){document.querySelectorAll(".odo i").forEach(el=>{el.style.tra
 const ICON={search:'<path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15zm5.3-2.2L21 21"/>',bell:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/>',back:'<path d="M15 4l-8 8 8 8"/>'};
 const ic=(n,href="#/activity")=>`<a class="ic" href="${href}" aria-label="${n}"><svg viewBox="0 0 24 24">${ICON[n]}</svg></a>`;
 function navbar(r){const h=$("#nav");
+ if(r==="replay"){h.innerHTML=`${ic("back","javascript:history.back()")}<div class="ttl">Replay</div><div style="width:34px"></div>`;return}
  if(r==="coin"||r==="auditor"){h.innerHTML=`${ic("back",r==="coin"?"#/home":"#/agents")}<div class="ttl">${r==="coin"?"Coin":"Auditor"}</div><div style="width:34px"></div>`;return}
  const t={agents:"Agents",activity:"Activity",account:"Account"}[r];
  const handle=S?.settings?.["desk.fomo_handle"]||"";
@@ -71,10 +72,10 @@ function render(){const r=route();navbar(r);errRow();
  const v=$("#view"),car=v.querySelector(".car"),sl=car?car.scrollLeft:0;
  if(ERR==="nolink"){v.innerHTML=pair();bindPair();return}
  if(!S){v.innerHTML=ERR?`<div class="empty"><b>Desk offline</b>Can't reach your desk right now. Retrying every 15 seconds.</div>`:skeleton(r);return}
- v.dataset.r=r;v.innerHTML=({home,agents,auditor,coin,activity,account}[r]||home)();
+ v.dataset.r=r;v.innerHTML=({home,agents,auditor,coin,activity,account,replay}[r]||home)();
  const c2=v.querySelector(".car");if(c2){c2.scrollLeft=sl;c2.onscroll=()=>{const i=Math.round(c2.scrollLeft/(c2.firstElementChild.offsetWidth+12));v.querySelectorAll(".dots i").forEach((d,j)=>d.classList.toggle("on",j===i))}}
  if(r==="home"){drawChart(false);drawPnl();rollOdo();if(BALDIR&&!RM){const b=$(".big");b.classList.add(BALDIR>0?"gu":"gd");setTimeout(()=>b.classList.remove("gu","gd"),1400);if(BALDIR>0)burstAt(".big");}BALDIR=0;if(PENDBURST){burstAt(".big");win();PENDBURST=0}v.querySelectorAll(".range button").forEach(b=>b.onclick=()=>{RANGE=b.dataset.r;localStorage.setItem("range",RANGE);v.querySelectorAll(".range button").forEach(x=>x.classList.toggle("on",x===b));drawChart(true)})}
- if(r==="coin")drawCandles();if(r==="auditor")drawDisc();
+ if(r==="coin")drawCandles();if(r==="replay")rpBind(v);bindStars(v);if(r==="auditor")drawDisc();
  if(r==="activity"||r==="home")bindFlip(v);bindAcct(v);v.querySelectorAll(".seg a").forEach(a=>a.onclick=e=>{e.preventDefault();SEG=a.dataset.s;render()})}
 function skeleton(r){const b=(h,w,mt,br)=>`<div class="sk" style="height:${h}px;${w?"width:"+w+";":""}margin-top:${mt||0}px;${br?"border-radius:"+br+"px":""}"></div>`,rows=n=>`<div class="list nb">${Array.from({length:n},()=>`<div class="li"><div class="sk" style="width:32px;height:32px;border-radius:50%"></div><div class="m">${b(12,"60%")}${b(10,"35%",6)}</div>${b(12,"20%")}</div>`).join("")}</div>`;
  r=r||route();if(r==="coin")return`<div class="skw"><div style="display:flex;gap:12px;align-items:center;margin-top:4px"><div class="sk" style="width:48px;height:48px;border-radius:50%"></div><div style="flex:1">${b(22,"55%")}${b(12,"30%",6)}</div></div>${b(160,"",12,16)}${b(48,"",8,24)}${b(18,"30%",16)}${rows(4)}</div>`;
@@ -150,7 +151,7 @@ function cards(){const au=S.auditor.live,an=S.analyst.live,ex=S.executor.live,sc
  `<div class="ag"><div class="hd"><span class="nm">Risk</span>${st("risk")}</div><div class="k">${S.risk.guarding?"Guarding":"Idle"}</div><div class="ks">Last exit · ${esc(S.risk.last_exit||"none yet")}</div><div class="ft" style="display:flex;gap:8px"><span class="pill p-r mono">stop -${S.risk.stop_pct}%</span><span class="pill p-g mono">trail ${S.risk.trail_pct}%</span></div></div>`].map((h,i)=>h.replace(/class="ag"/,`class="ag" style="--ac:${AC[i]}"`))}
 function chips(){return`<a class="chips" href="#/agents">${["scanner","auditor","analyst","executor","risk"].map((a,i)=>{const g=S.agents[a]||{};return`<span class="chip" style="--ac:${AC[i]}"><i class="dot" style="background:${g.paused?"var(--l3)":g.alive?AC[i]:"var(--r)"}"></i>${a[0].toUpperCase()+a.slice(1)}</span>`}).join("")}</a>`}
 function carousel(){const c=cards();return`<div class="car">${c.join("")}</div><div class="dots">${c.map((_,i)=>`<i class="${i?"":"on"}"></i>`).join("")}</div>`}
-function agents(){return`<div class="pt">Agents</div>${carousel()}<div class="sh"><h2>Scanner feed</h2>${srT()}</div>${S.scanner.feed.filter(f=>SR||f.verdict==="pass").length?`<div class="list nb fill">${S.scanner.feed.filter(f=>SR||f.verdict==="pass").slice(0,15).map(f=>`<a class="li" href="#/coin/${esc(f.mint)}">${logo(f.name,f.image,f.mint,32)}<div class="m"><div class="t" style="${f.verdict==="pass"?"":"color:var(--l3);text-decoration:line-through;text-decoration-color:var(--r)"}">${esc(f.name||f.mint.slice(0,6))}</div></div><div class="v num ${f.verdict==="pass"?"up":"dn"}">${f.verdict==="pass"?`liq $${kfmt(f.liq)} · → auditor`:esc(f.reason)}</div></a>`).join("")}</div>`:`<div class="empty"><b>${S.scanner.feed.length?"No passes yet":"No pools yet"}</b>${S.scanner.feed.length?S.scanner.feed.length+" rejects hidden. Coins that pass show up here.":"Scanner is listening for coins graduating to PumpSwap."}</div>`}`}
+function agents(){return`<div class="pt">Agents</div>${carousel()}${watchSec()}<div class="sh"><h2>Scanner feed</h2>${srT()}</div>${S.scanner.feed.filter(f=>SR||f.verdict==="pass").length?`<div class="list nb fill">${S.scanner.feed.filter(f=>SR||f.verdict==="pass").slice(0,15).map(f=>`<a class="li" href="#/coin/${esc(f.mint)}">${star(f.mint,f.name,1)}${logo(f.name,f.image,f.mint,32)}<div class="m"><div class="t" style="${f.verdict==="pass"?"":"color:var(--l3);text-decoration:line-through;text-decoration-color:var(--r)"}">${esc(f.name||f.mint.slice(0,6))}</div></div><div class="v num ${f.verdict==="pass"?"up":"dn"}">${f.verdict==="pass"?`liq $${kfmt(f.liq)} · → auditor`:esc(f.reason)}</div></a>`).join("")}</div>`:`<div class="empty"><b>${S.scanner.feed.length?"No passes yet":"No pools yet"}</b>${S.scanner.feed.length?S.scanner.feed.length+" rejects hidden. Coins that pass show up here.":"Scanner is listening for coins graduating to PumpSwap."}</div>`}`}
 /* ---------- activity ---------- */
 function actIcon(k){return k==="buy"?["rgba(10,132,255,.2)","var(--b)","↗"]:k==="sell"?["rgba(0,211,90,.18)","var(--g)","$"]:k==="stop"?["rgba(255,69,58,.16)","var(--r)","!"]:["#2c2c2e","var(--l2)","×"]}
 function actList(it,emptyText){if(!it.length)return`<div class="list nb"><div class="empty" style="padding:28px 20px">${emptyText}</div></div>`;
@@ -158,7 +159,7 @@ function actList(it,emptyText){if(!it.length)return`<div class="list nb"><div cl
 let FLIP=false;const FLIPPED=new Set();
 function flipCard(a,bg,fg,g){const d=coinCache[a.mint],L=d?.audit?.layers||[],an=d?.analysis,on=FLIPPED.has(a.id);
  const back=d===undefined?'<div class="l3" style="font-size:var(--t2)">Loading why…</div>':!L.length?'<div class="l3" style="font-size:var(--t2)">No audit saved for this coin.</div>':
-  `<div class="why">${L.map(l=>`<div class="wy"><span class="ck ${l.pass===true?"ok":l.pass===false?"bad":""}">${l.pass===true?"✓":l.pass===false?"✕":l.n}</span><span class="wn">${esc(l.name)}</span><span class="wv num">${esc(l.value)}</span></div>`).join("")}</div>${an?`<div class="l2 num" style="font-size:var(--t1);margin-top:8px">Analyst score <b class="${an.passed?"up":"dn"}">${esc(an.score)}</b> · passes from ${esc(S.settings["analyst.min_score"])}</div>`:""}`;
+  `<div class="why">${L.map(l=>`<div class="wy"><span class="ck ${l.pass===true?"ok":l.pass===false?"bad":""}">${l.pass===true?"✓":l.pass===false?"✕":l.n}</span><span class="wn">${esc(l.name)}</span><span class="wv num">${esc(l.value)}</span></div>`).join("")}</div>${an?`<div class="l2 num" style="font-size:var(--t1);margin-top:8px">Analyst score <b class="${an.passed?"up":"dn"}">${esc(an.score)}</b> · passes from ${esc(S.settings["analyst.min_score"])}</div>`:""}${a.mint?`<a class="rpb" href="#/replay/${esc(a.mint)}">▶ Replay</a>`:""}`;
  return`<div class="fc${on?" on":""}" data-id="${esc(a.id)}" data-m="${esc(a.mint)}" role="button" tabindex="0" aria-pressed="${on}"><div class="fi"><div class="ff li">${a.mint?logo(a.title.replace(/^(Bought|Sold|Stopped out of|Stop)\s+/,""),imgOf(a.mint)||d?.image,a.mint):`<div class="ico" style="background:${bg};color:${fg}">${g}</div>`}<div class="m"><div class="t">${esc(a.title)}</div><div class="s">${esc(a.sub)} · <span style="color:var(--cy)">tap for why</span></div></div><div class="v num ${a.kind==="stop"?"dn":"up"}">${esc(a.value)}<div class="s l3">${time(a.ts)}</div></div></div>
  <div class="fb"><div class="hd2"><b>Why the desk bought ${esc(a.title.replace(/^(Bought|Sold|Stopped out of|Stop)\s+/,""))}</b>${a.mint?`<a href="#/coin/${esc(a.mint)}" class="l2" style="font-size:var(--t1)">Coin ›</a>`:""}</div>${back}</div></div></div>`}
 function bindFlip(v){v.querySelectorAll(".fc").forEach(el=>{const t=e=>{if(e.target.closest("a"))return;const id=+el.dataset.id,m=el.dataset.m;FLIPPED.has(id)?FLIPPED.delete(id):FLIPPED.add(id);el.classList.toggle("on");el.classList.remove("anim");void el.offsetWidth;el.classList.add("anim");el.setAttribute("aria-pressed",el.classList.contains("on"));
@@ -195,7 +196,7 @@ function coin(){const m=(location.hash.match(/#\/coin\/(\w+)/)||[])[1],d=coinCac
  return`<div class="cd"><div style="display:flex;gap:12px;align-items:center;margin-top:4px">${logo(c.name,D.image||c.image||imgOf(m),m,48)}<div style="min-width:0"><div style="font:700 var(--t5) var(--disp);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name||m.slice(0,6))}</div><div class="l2" style="font-size:var(--t1)">${esc(c.symbol||"")}${held?' · <span class="up">holding</span>':""}</div></div>
  <div style="margin-left:auto;text-align:right"><div class="num" style="font:600 20px var(--disp)">${last?"$"+Number(last).toPrecision(4):"—"}</div><div class="num ${ch>=0?"up":"dn"}" style="font-size:var(--t1)">${pr.length>1?(ch>=0?"+":"")+ch.toFixed(2)+"%":""}</div></div></div>
  <canvas id="cn" class="chart" style="height:160px"></canvas>
- ${held?ext(link,"Sell on FOMO","btn"):`${ext(link,"Buy on FOMO","btn")}<div class="l3" style="font-size:var(--t1);text-align:center;margin-top:6px">Tell Grok Bot “bought ${esc(c.name||c.symbol||"this coin")}” to track it</div>`}
+ <div class="cdb"><a class="btn sec rpbig" href="#/replay/${esc(m)}">▶ Replay</a>${star(m,c.name)}</div>${held?ext(link,"Sell on FOMO","btn"):`${ext(link,"Buy on FOMO","btn")}<div class="l3" style="font-size:var(--t1);text-align:center;margin-top:6px">Tell Grok Bot “bought ${esc(c.name||c.symbol||"this coin")}” to track it</div>`}
  ${pos?`<div class="sh"><h2>Position</h2></div><div class="list nb">${row("Entry",pos.entry_price?"$"+Number(pos.entry_price).toPrecision(4):"—")}${row("Size",usd(pos.size_usd))}${row("Stop",`<span class="mono">-${pos.stop_pct}%</span>`)}${pnl!=null?row(pos.status==="closed"?"P&L (closed)":"P&L (now)",`${pnl>=0?"+":"-"}$${f2(Math.abs(pnl))}`,pnl>=0?"up":"dn"):""}</div>`:""}
  <div class="sh"><h2>Market</h2></div><div class="list nb">${row("Liquidity",liq!=null?"$"+kfmt(liq):"—")}${row("Holders",au?.holders??c.holders??"—")}${row("Top 10 hold",lv(4)??(sc.top10Pct!=null?sc.top10Pct+"%":"—"))}${row("Dev wallet",lv(3)??"—")}${row("Insiders / bundles",lv(7)??"—")}</div>
  <div class="sh"><h2>Audit</h2><span class="l2" style="font-size:var(--t1)">${au?(au.passed?"8/8 clear":esc(au.reason||"failed")):"not audited"}</span></div>
@@ -225,7 +226,7 @@ function account(){const s=S.settings,sp=S.spec,row=(k,v,href)=>`${href?`<a clas
 function bindAcct(v){v.querySelectorAll("[data-theme]").forEach(b=>b.onclick=()=>{localStorage.setItem("theme",b.dataset.theme);applyTheme();render()});
  const s=v.querySelector("#snd");if(s)s.onclick=()=>{const on=!SOUND();localStorage.setItem("sound",on?"on":"off");if(on){unlockAudio();chaChing()}render()};
  const t=v.querySelector("#tst");if(t)t.onclick=()=>{if(SOUND())unlockAudio();win();burstAt("#tst")}}
-addEventListener("hashchange",()=>{render();const m=(location.hash.match(/#\/coin\/(\w+)/)||[])[1];if(m&&!coinCache[m]&&DP())get("coin/"+m+".json").then(d=>{coinCache[m]=d;render()}).catch(()=>{COINMISS[m]=1;render()});tick()});addEventListener("resize",()=>{if(route()==="home"){drawChart(false);drawPnl()}});
+addEventListener("hashchange",()=>{render();const m=(location.hash.match(/#\/(?:coin|replay)\/(\w+)/)||[])[1];if(m&&!coinCache[m]&&DP())get("coin/"+m+".json").then(d=>{coinCache[m]=d;render()}).catch(()=>{COINMISS[m]=1;render()});tick()});addEventListener("resize",()=>{if(route()==="home"){drawChart(false);drawPnl()}});
 let BUSY=0;async function tick(){if(BUSY)return;BUSY=1;try{await poll()}finally{BUSY=0}}
 (function(){const v=$("#view"),ind=document.createElement("div");ind.id="ptr";ind.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 4v12m0 0-5-5m5 5 5-5"/></svg>';document.body.appendChild(ind);
  let y0=null,dy=0,act=0;const T=64,top=()=>{const n=v.getBoundingClientRect().top;ind.style.top=n+"px"};
@@ -237,3 +238,48 @@ let BUSY=0;async function tick(){if(BUSY)return;BUSY=1;try{await poll()}finally{
  window.PTR_DEMO=()=>{top();ind.style.opacity=1;ind.classList.add("spin");ind.style.transform="translate(-50%,16px)"}})();
 render();tick();setInterval(()=>{if(!document.hidden)tick()},15000);
 addEventListener("visibilitychange",()=>{if(!document.hidden)tick()});addEventListener("focus",tick);addEventListener("pageshow",tick);addEventListener("online",tick);
+
+/* ---------- watchlist ---------- */
+const WL=()=>{try{return JSON.parse(localStorage.getItem("stars")||"{}")}catch(e){return{}}};
+function star(m,name,sm){const on=!!WL()[m],desk=(S?.watchlist||[]).some(w=>w.mint===m);return`<button class="star${on||desk?" on":""}${sm?" sm":""}" data-star="${esc(m)}" data-nm="${esc(name||"")}" aria-label="${on?"Unstar":"Star"}" ${desk&&!on?'title="On the desk watchlist"':""}>${on||desk?"★":"☆"}</button>`}
+function bindStars(v){v.querySelectorAll("[data-star]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();const w=WL(),m=b.dataset.star;if(w[m])delete w[m];else w[m]={name:b.dataset.nm,added:Date.now()};localStorage.setItem("stars",JSON.stringify(w));render()})}
+function watchSec(){const w=WL(),dw=S.watchlist||[],ms=[...new Set([...dw.map(x=>x.mint),...Object.keys(w)])];if(!ms.length)return`<div class="sh"><h2>Watchlist</h2></div><div class="l3" style="font-size:var(--t1)">Tap ☆ on a coin to watch it here. Tell Grok Bot “watch &lt;coin&gt;” to have the desk check it first every scan.</div>`;
+ const feed=S.scanner.feed||[],row=m=>{const d=dw.find(x=>x.mint===m)||{},f=feed.find(x=>x.mint===m)||{},cc=coinCache[m]||{},sc=cc.scan||{},name=d.name||f.name||cc.coin?.name||w[m]?.name||m.slice(0,6),pr=d.price??f.price??sc.priceUsd,lq=d.liq??f.liq??sc.liquidityUsd;
+  return`<a class="li" href="#/coin/${esc(m)}">${star(m,name,1)}${logo(name,d.image||f.image||cc.image||imgOf(m),m,32)}<div class="m"><div class="t">${esc(name)}${d.mint?' <span class="pill p-n bdg">desk</span>':""}</div><div class="s num">${lq!=null?"liq $"+kfmt(lq):"liq —"}${d.verdict?` · ${esc(d.verdict==="pass"?"passed":d.reason||d.verdict)}`:""}</div></div><div class="v num">${pr?"$"+Number(pr).toPrecision(4):"—"}${d.h1!=null?`<div class="s ${d.h1>=0?"up":"dn"}">${d.h1>=0?"+":""}${Number(d.h1).toFixed(1)}% 1h</div>`:""}</div></a>`};
+ return`<div class="sh"><h2>Watchlist · ${ms.length}</h2></div><div class="list nb wl">${ms.map(row).join("")}</div>`}
+/* ---------- replay ---------- */
+let RP={m:null,t:0,play:1,last:0,timer:null};
+function rpSteps(m){const d=coinCache[m]||{},sc=d.scan||{},fd=(S.scanner.feed||[]).find(f=>f.mint===m)||{},au=d.audit,an=d.analysis,pos=(d.positions||[])[0]||(S.positions||[]).find(p=>p.mint===m),pr=(d.prices||[]).filter(p=>p.price),alerts=((A&&A.items)||[]).filter(a=>a.kind==="alert"&&a.mint===m);
+ const st=[];const liq=sc.liquidityUsd??fd.liq;
+ st.push({k:"scan",ic:"🔭",t:"Scanned",v:`${liq!=null?"liq $"+kfmt(liq):"liq —"} · ${esc(sc.source||fd.source||"migration")}`,d:900});
+ (au?.layers||[]).forEach(l=>st.push({k:"layer",ok:l.pass,t:`${l.n}. ${esc(l.name)}`,v:esc(l.value??""),d:450}));
+ if(!au)st.push({k:"layer",t:"Audit",v:"no audit saved",d:600});
+ st.push({k:"an",ic:"🧠",t:"Analyst",v:an?`score ${an.score} · ${an.passed?"pass":"reject"}`:"not scored",ok:an?an.passed:null,d:900});
+ if(pos){st.push({k:"buy",ic:"🟢",t:"Paper buy",v:`$${f2(pos.size_usd)} @ $${Number(pos.entry_price).toPrecision(4)}`,d:900});
+  st.push({k:"path",ic:"📈",t:"Price path",v:`${pr.length} ticks${alerts.length?` · ${alerts.length} alert${alerts.length>1?"s":""}`:""}`,d:3000,pr,alerts,pos});
+  const last=pr.at(-1)?.price,pnl=pos.status==="closed"?pos.pnl_usd:(last?pos.size_usd*(last/pos.entry_price-1):null),why=pos.status==="closed"?(pos.exit_reason||"exit"):"still open";
+  st.push({k:"exit",ic:pos.status==="closed"?(pnl>=0?"🏁":"🛑"):"⏳",t:pos.status==="closed"?"Exit":"Still open",v:`${esc(why)}${pnl!=null?` · <b class="${pnl>=0?"up":"dn"}">${pnl>=0?"+":"-"}$${f2(Math.abs(pnl))}</b>`:""}`,d:1200})}
+ else st.push({k:"exit",ic:"·",t:"No trade",v:"the desk didn't buy this coin",d:900});
+ return st}
+function rpAt(st,t){let a=0;for(let i=0;i<st.length;i++){if(t<a+st[i].d)return[i,(t-a)/st[i].d];a+=st[i].d}return[st.length-1,1]}
+function replay(){const m=(location.hash.match(/#\/replay\/(\w+)/)||[])[1];if(!coinCache[m]&&!COINMISS[m])return skeleton("coin");
+ if(RP.m!==m){RP={m,t:0,play:!RM,last:0,timer:null}}const st=rpSteps(m),tot=st.reduce((a,s)=>a+s.d,0);if(RM)RP.t=tot;const[cur]=rpAt(st,RP.t);
+ const d=coinCache[m]||{},name=d.coin?.name||m.slice(0,6);
+ return`<div class="rpw"><div style="display:flex;gap:var(--s3);align-items:center;margin:var(--s1) 0 var(--s2)">${logo(name,d.image||imgOf(m),m,40)}<div style="font:700 var(--t4) var(--disp)">${esc(name)}</div></div>
+ <div class="tip"><b>How replay works</b><span>Tap <b>▶ Replay</b> on a trade card or coin page to start.</span><span>It plays scan → 8 audit checks → Analyst score → buy → price moves &amp; alerts → exit with P&amp;L.</span><span>⏯ play/pause · ⏭ next step · tap any step to jump.</span></div>
+ <canvas id="rpc" class="chart" style="height:110px"></canvas>
+ <div class="rpbar"><i style="width:${Math.min(100,100*RP.t/tot)}%"></i></div>
+ <div class="rpctl"><button data-rp="restart" aria-label="Restart">⏮</button><button data-rp="play" class="pp" aria-label="Play or pause">${RP.play?"⏸":"▶"}</button><button data-rp="next" aria-label="Next step">⏭</button></div>
+ <div class="list nb rps">${st.map((s,i)=>`<div class="li rpst ${i<cur||RM?"done":i===cur?"cur":"todo"}" data-i="${i}">${s.k==="layer"?`<span class="ck ${s.ok===true?"ok":s.ok===false?"bad":""}">${s.ok===true?"✓":s.ok===false?"✕":"·"}</span>`:`<span class="rpi">${s.ic}</span>`}<div class="m"><div class="t" style="font-size:var(--t2)">${s.t}</div></div><div class="v num l2">${s.v}</div></div>`).join("")}</div></div>`}
+function rpDraw(st,t){const cv=$("#rpc");if(!cv)return;const dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;const x=cv.getContext("2d");x.scale(dpr,dpr);
+ const pi=st.findIndex(s=>s.k==="path");const[cur,f]=rpAt(st,t);const P=pi>=0?st[pi]:null;if(!P||P.pr.length<2){x.fillStyle="rgba(235,235,245,.3)";x.font="13px -apple-system,system-ui";x.textAlign="center";x.fillText(P?"No price ticks saved":"No trade to chart",W/2,H/2);return}
+ const frac=cur<pi?0:cur>pi?1:f,pr=P.pr,n=Math.max(1,Math.round(frac*pr.length)),v=pr.map(p=>p.price),e=P.pos.entry_price,mn=Math.min(...v,e),mx=Math.max(...v,e),sy=y=>6+(1-(y-mn)/((mx-mn)||1))*(H-12),sx=i=>i/(pr.length-1)*W;
+ x.setLineDash([4,4]);x.strokeStyle="rgba(235,235,245,.3)";x.beginPath();x.moveTo(0,sy(e));x.lineTo(W,sy(e));x.stroke();x.setLineDash([]);
+ if(n>1){x.strokeStyle=v[n-1]>=e?"#00d35a":"#ff453a";x.lineWidth=2;x.beginPath();for(let i=0;i<n;i++)i?x.lineTo(sx(i),sy(v[i])):x.moveTo(sx(i),sy(v[i]));x.stroke();x.fillStyle=x.strokeStyle;x.beginPath();x.arc(sx(n-1),sy(v[n-1]),3.5,0,7);x.fill()}
+ const t0=pr[0].ts,t1=pr.at(-1).ts;P.alerts.forEach(a=>{const ts=(+new Date(a.ts))/1000,i=Math.round((ts-t0)/((t1-t0)||1)*(pr.length-1));if(i<0||i>=n)return;x.fillStyle="#ffd60a";x.beginPath();x.moveTo(sx(i),4);x.lineTo(sx(i)-5,13);x.lineTo(sx(i)+5,13);x.fill()})}
+function rpBind(v){const m=RP.m,st=rpSteps(m),tot=st.reduce((a,s)=>a+s.d,0);rpDraw(st,RP.t);clearInterval(RP.timer);
+ const upd=()=>{const[cur]=rpAt(st,RP.t);v.querySelectorAll(".rpst").forEach((el,i)=>el.className=`li rpst ${i<cur||RP.t>=tot?"done":i===cur?"cur":"todo"}`);const b=v.querySelector(".rpbar i");if(b)b.style.width=Math.min(100,100*RP.t/tot)+"%";const pp=v.querySelector(".pp");if(pp)pp.textContent=RP.play?"⏸":"▶";rpDraw(st,RP.t);const c=v.querySelector(".rpst.cur");if(c&&RP.play)c.scrollIntoView({block:"nearest"})};
+ const start=a=>{let s=0;for(let i=0;i<a;i++)s+=st[i].d;return s};
+ RP.timer=setInterval(()=>{if(!RP.play||route()!=="replay")return;RP.t=Math.min(tot,RP.t+100);if(RP.t>=tot)RP.play=0;upd()},100);
+ v.querySelectorAll("[data-rp]").forEach(b=>b.onclick=()=>{const k=b.dataset.rp;if(k==="play"){if(RP.t>=tot)RP.t=0;RP.play=!RP.play}if(k==="restart"){RP.t=0;RP.play=1}if(k==="next"){const[c]=rpAt(st,RP.t);RP.t=c+1<st.length?start(c+1):tot}upd()});
+ v.querySelectorAll(".rpst").forEach(el=>el.onclick=()=>{RP.t=start(+el.dataset.i)+1;upd()})}
