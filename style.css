@@ -434,3 +434,6 @@ html[data-theme=neon] .dpanel,html[data-theme=neon] .homev12.desk-home .home-sti
 .desk-wallets{grid-column:2;grid-row:4;max-height:360px}
 .homev12.desk-home .home-scroll{grid-column:1 / span 2;grid-row:5}
 }
+
+/* strategy source tag */
+.stag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;font-size:10px;font-weight:600;letter-spacing:.02em;background:rgba(100,210,255,.14);color:var(--cy,#64d2ff);vertical-align:middle}
