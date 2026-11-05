@@ -266,12 +266,15 @@ async function togglePause(){if(PAUSEBUSY)return;const k=CK();
  if(!k){alert("This phone is missing the pause key. Open the fresh desk link from Discord (it has &k=…), then Add to Home Screen.");return}
  PAUSEBUSY=1;const want=!S.trading_paused;
  const body=JSON.stringify({paused:want,k,ts:new Date().toISOString()});
- const putOnce=async()=>{const put=S?.control_put;if(!put)throw new Error("pause URL not ready");
+ const putOnce=async(put)=>{if(!put)throw new Error("pause URL not ready");
   const r=await fetch(put,{method:"PUT",headers:{"Content-Type":"application/json","x-upsert":"true"},body});
   if(!r.ok)throw new Error("HTTP "+r.status);return r};
+ const waitFresh=async(prev)=>{for(let i=0;i<16;i++){await new Promise(r=>setTimeout(r,2000));await tick();
+  const n=S?.control_put;if(n&&n!==prev)return n}return S?.control_put||null};
  try{
-  try{await putOnce()}catch(e1){await tick();await putOnce()}
-  S.trading_paused=want;render();setTimeout(()=>tick(),1200);
+  let put=S?.control_put;
+  try{await putOnce(put)}catch(e1){put=await waitFresh(put);await putOnce(put)}
+  S.control_put=null;S.trading_paused=want;render();setTimeout(()=>tick(),1500);
  }catch(e){alert("Couldn't update pause ("+e.message+"). Wait for Live, then try again.")}
  finally{PAUSEBUSY=0}}
 function drawMiniCharts(){const stats=S?.stats||{},G=getComputedStyle(document.documentElement),cg=G.getPropertyValue("--g").trim()||"#00d35a",cr=G.getPropertyValue("--r").trim()||"#ff453a",cl=G.getPropertyValue("--l3").trim()||"rgba(235,235,245,.3)";
