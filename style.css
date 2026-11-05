@@ -1,5 +1,5 @@
-:root{--bg:#000;--fg:#fff;--l2:rgba(235,235,245,.6);--l3:rgba(235,235,245,.3);--sep:rgba(84,84,88,.55);--c1:#1c1c1e;--c2:#2c2c2e;
---g:#00d35a;--r:#ff453a;--o:#ff9f0a;--cy:#64d2ff;--b:#0a84ff;--y:#ffd60a;--pk:#ff6b9a;
+:root{--bg:#000;--fg:#fff;--l2:rgba(235,235,245,.6);--l3:rgba(235,235,245,.3);--sep:rgba(84,84,88,.55);--c1:#121212;--c2:#1C1C1C;
+--g:#00E676;--r:#FF5A5F;--o:#ff9f0a;--cy:#64d2ff;--b:#0a84ff;--y:#ffd60a;--pk:#ff6b9a;
 --top:env(safe-area-inset-top,0px);--bot:env(safe-area-inset-bottom,0px);
 --disp:-apple-system,"SF Pro Display",BlinkMacSystemFont,"Helvetica Neue",Inter,system-ui,sans-serif;
 --text:-apple-system,"SF Pro Text",BlinkMacSystemFont,"Helvetica Neue",Inter,system-ui,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,monospace}
@@ -230,8 +230,8 @@ main{overscroll-behavior-y:contain}
 .sheet-c{width:100%;height:100%;background:var(--c2);border-radius:12px}
 html[data-theme=neon] .chart-card,html[data-theme=neon] .shpanel{box-shadow:0 0 0 1px rgba(160,120,255,.18)}
 html[data-theme=neon] .hero-pnl{text-shadow:0 0 18px rgba(57,255,136,.35)}
-#view[data-r=home]{display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:none;touch-action:manipulation}
-#view[data-r=home] .homev12{flex:1;min-height:0;overflow:hidden}
+#view[data-r=home]{display:block;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y}
+#view[data-r=home] .homev12{display:block;min-height:0;overflow:visible}
 #view[data-r=home] .tkr{display:none}
 #view[data-r=feed],#view[data-r=agents],#view[data-r=activity],#view[data-r=account],#view[data-r=coin],#view[data-r=auditor],#view[data-r=replay]{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
 /* Feed: document (#view) scrolls — avoid nested scroll traps on iOS */
@@ -285,3 +285,79 @@ html[data-theme=neon] .fpill.watching{box-shadow:none}
 @media (prefers-reduced-motion:reduce){.frow.fresh,.frow.st-chg .fpill{animation:none}}
 
 @media (prefers-reduced-motion:reduce){.odo i{transition:none!important}}
+
+/* ===== v15 restyle + wallets/copy ===== */
+:root{--card:#121212;--card2:#1C1C1C;--radius:14px}
+.list,.ag,.frow,.chart-card,.wrow,.mcard,.statg>div,.poscard,.cpills{border-radius:var(--radius)!important;background:var(--c1)}
+.pill{border-radius:999px}
+.range button{border-radius:999px;color:var(--l2)}.range button.on{color:#000;background:var(--g);font-weight:700}
+.range button.on.live{position:relative;padding-left:18px}
+.range button.on.live::before{content:"";position:absolute;left:8px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:#000;box-shadow:0 0 0 0 rgba(0,0,0,.45);animation:liveDot 1.4s ease-out infinite}
+@keyframes liveDot{0%{box-shadow:0 0 0 0 rgba(0,0,0,.35)}70%{box-shadow:0 0 0 6px rgba(0,0,0,0)}100%{box-shadow:0 0 0 0 rgba(0,0,0,0)}}
+.home-sticky{position:sticky;top:0;z-index:3;background:#000;padding:0 0 8px;margin:0 -16px;padding-left:16px;padding-right:16px}
+.home-scroll{padding-bottom:8px}
+.hero{padding:8px 0 4px;margin:0;cursor:pointer}
+.hero .big{--odo-h:56px;font-size:56px;height:56px;line-height:56px;color:#fff;font-weight:700}
+@media (max-width:390px){.hero .big{--odo-h:50px;font-size:50px;height:50px;line-height:50px}}
+.hero-pnl{margin-top:6px;font:700 18px/1.2 var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mult{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;background:var(--g);color:#000;font:700 12px var(--text)}
+.mult.dn{background:var(--r);color:#fff}
+.homev12 canvas.chart{height:160px;margin:4px 0 2px}
+.tap-hint{display:none}
+.desk-hd{display:flex;align-items:baseline;justify-content:space-between;margin:18px 0 10px}
+.desk-hd h2{margin:0;font:700 20px var(--disp)}
+.desk-hd .sub{color:var(--l2);font-size:13px}
+.desk-car{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:0 16px 6px;scrollbar-width:none}
+.desk-car::-webkit-scrollbar{display:none}
+.dcard{flex:none;width:148px;min-height:118px;border-radius:14px;background:var(--c1);padding:12px;scroll-snap-align:start;display:flex;flex-direction:column;gap:4px;border:1px solid rgba(255,255,255,.04)}
+.dcard .nm{font:600 12px var(--text);color:var(--l2)}
+.dcard .k{font:700 18px/1.15 var(--disp);color:#fff;margin-top:2px}
+.dcard .ks{font-size:11px;color:var(--l2);margin-top:auto}
+.dcard .xpill{align-self:flex-start;margin-top:6px}
+.dcard.copy{background:linear-gradient(160deg,#121212,#152018)}
+.dcard.match .k{font-size:16px}
+.act-home .li{min-height:56px}
+.toast{position:fixed;left:50%;top:calc(var(--top) + 10px);transform:translate(-50%,-120%);z-index:60;background:#1C1C1C;border:1px solid rgba(255,255,255,.08);color:#fff;padding:10px 16px;border-radius:999px;font:600 13px var(--text);box-shadow:0 8px 28px rgba(0,0,0,.45);opacity:0;transition:transform .35s cubic-bezier(.2,.8,.2,1),opacity .35s;pointer-events:none;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+.toast.show{transform:translate(-50%,0);opacity:1}
+.toast .up{color:var(--g)}.toast .dn{color:var(--r)}
+/* wallets tab */
+.whead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 12px}
+.whead .pt{margin:0;font-size:28px}
+.buys-pill{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;background:rgba(10,132,255,.2);color:#64B5FF;font:700 12px var(--text)}
+.wchips{display:flex;gap:8px;overflow-x:auto;padding:0 0 12px;scrollbar-width:none}.wchips::-webkit-scrollbar{display:none}
+.wchip{flex:none;height:28px;padding:0 12px;border-radius:999px;background:var(--c2);color:var(--l2);font:600 12px var(--text);border:0}
+.wchip.on{background:#fff;color:#000}
+.wrow{display:flex;align-items:center;gap:10px;padding:12px 14px;margin:0 0 8px;border-radius:14px;background:var(--c1)}
+.wrow .ck{width:22px;height:22px;border-radius:50%;background:rgba(0,230,118,.18);color:var(--g);display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+.wrow .m{flex:1;min-width:0}
+.wrow .t{font:600 14px var(--mono);letter-spacing:.02em}
+.wrow .s{font-size:12px;color:var(--l2);margin-top:2px;transition:color .2s}
+.wrow .s.flash{color:#fff;animation:flashTxt .7s ease}
+@keyframes flashTxt{0%{color:var(--g)}100%{color:var(--l2)}}
+.pill-30{height:20px;padding:0 7px;border-radius:999px;background:rgba(0,230,118,.16);color:var(--g);font:700 11px var(--text)}
+.wempty{padding:28px 16px;text-align:center;color:var(--l2);font-size:14px}
+/* match sheet */
+.msheet .shpanel{max-height:78dvh}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.mgrid .mw{display:flex;align-items:center;gap:8px;padding:10px;border-radius:12px;background:var(--c2);font-size:12px}
+.mgrid .mw .ck{width:18px;height:18px;font-size:10px;background:rgba(0,230,118,.2);color:var(--g)}
+.mfoot{margin-top:8px;padding:12px;border-radius:12px;background:var(--c2);text-align:center;font:600 14px var(--text)}
+.mfoot.filled{background:rgba(0,230,118,.14);color:var(--g)}
+.mfoot.wait{color:var(--l2)}
+/* coin slide + copied wallets */
+.cd{animation:slideIn .28s ease-out}
+@keyframes slideIn{from{transform:translateX(24px);opacity:.4}to{transform:none;opacity:1}}
+.coin-back{color:var(--g)!important;font-weight:600}
+.statg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.statg>div{padding:12px;border-radius:14px;background:var(--c1)}
+.statg .lb{font-size:11px;color:var(--l2)}.statg .vl{font:700 16px var(--disp);margin-top:4px}
+.poscard{padding:14px;margin:8px 0 12px}
+.poscard h3{margin:0 0 8px;font:700 15px var(--text)}
+.cpills{display:flex;flex-wrap:wrap;gap:6px;padding:12px;margin:8px 0}
+.cpills .cp{height:24px;padding:0 10px;border-radius:999px;background:rgba(0,230,118,.14);color:var(--g);font:700 11px var(--text);display:inline-flex;align-items:center}
+.chart-tip{position:absolute;transform:translate(-50%,-120%);padding:4px 8px;border-radius:8px;font:700 10px var(--text);pointer-events:none;white-space:nowrap;z-index:2}
+.chart-tip.up{background:rgba(0,230,118,.92);color:#000}.chart-tip.dn{background:rgba(255,90,95,.92);color:#fff}
+.chwrap{position:relative}
+#tabs a.on[data-t=wallets]{color:#64B5FF}
+#view[data-r=wallets]{overflow-y:auto;-webkit-overflow-scrolling:touch}
+@media (prefers-reduced-motion:reduce){.cd,.toast,.wrow .s.flash,.range button.on.live::before{animation:none!important;transition:none!important}}
