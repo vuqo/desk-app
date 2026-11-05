@@ -19,7 +19,7 @@ async function poll(){if(!DP()){ERR="nolink";render();return}
  try{[S,A,C]=await Promise.all([get("state.json"),get("activity.json"),get("chart.json")]);ERR=null;LAST=Date.now();indexImgs();{const top=(A&&A.items||[]).filter(a=>a.kind==="buy"||(a.kind==="sell"&&!String(a.value).startsWith("-")));const mx=Math.max(0,...top.map(a=>+new Date(a.ts)||0));if(SEENTS&&mx>SEENTS)PENDBURST=1;SEENTS=Math.max(SEENTS||0,mx)||-1}
   const m=location.hash.match(/#\/(?:coin|replay)\/(\w+)/);if(m){const cd=await get("coin/"+m[1]+".json").catch(()=>null);if(cd)coinCache[m[1]]=cd;else COINMISS[m[1]]=1}
  }catch(e){ERR=e.message}NEXT=Date.now()+15000;render()}
-let prevStack=0,BALDIR=0,PENDBURST=0,SEENTS=0,P=[],SHEET=0,SCRUB=null,CHSERIES=null,PAUSEBUSY=0;const DEMO=DEMO0;
+let prevStack=0,BALDIR=0,PENDBURST=0,SEENTS=0,P=[],SHEET=0,SCRUB=null,CHSERIES=null,PAUSEBUSY=0,FEED=null,FEEDSEEN={},FEEDPREV={},FEEDTIMER=0;const DEMO=DEMO0;
 function burstAt(sel){if(RM)return;const el=$(sel);if(!el)return;const r=el.getBoundingClientRect(),cx=r.left+Math.min(r.width,260)/2,cy=r.top+r.height/2,cols=["#00d35a","#64d2ff","#ffd60a","#ff6b9a","#fff","#00d35a"];
  for(let i=0;i<70;i++){const a=Math.random()*6.283,v=2+Math.random()*6;P.push({x:cx,y:cy,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2.5,c:cols[i%6],s:2+Math.random()*3,l:1,st:Math.random()<.35,r:Math.random()*6})}}
 const TW=Array.from({length:22},()=>({x:Math.random(),y:Math.random(),s:.5+Math.random()*1.3,ph:Math.random()*6.28,v:.004+Math.random()*.008}));
@@ -37,7 +37,7 @@ function logo(name,img,mint,sz=40){const n=esc(((name||mint||"?").trim()[0]||"?"
  const fb=`<span class="lg-i" style="background:hsl(${h} 70% 22%);color:hsl(${h} 90% 72%)">${n}</span>`;
  return `<span class="lg" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.42)}px">${fb}${img&&/^https:\/\//.test(img)?`<img src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}</span>`}
 const IMG={};function imgOf(m){return IMG[m]||null}
-function indexImgs(){(S?.scanner?.feed||[]).forEach(f=>{if(f.image)IMG[f.mint]=f.image});(S?.positions||[]).forEach(p=>{if(p.image)IMG[p.mint]=p.image})}
+function indexImgs(){(S?.scanner?.feed||[]).forEach(f=>{if(f.image)IMG[f.mint]=f.image});(S?.positions||[]).forEach(p=>{if(p.image)IMG[p.mint]=p.image});(FEED?.items||[]).forEach(f=>{if(f.img)IMG[f.m]=f.img})}
 const THEME=()=>localStorage.getItem("theme")||"dark";function applyTheme(){document.documentElement.dataset.theme=THEME();document.querySelector('meta[name=theme-color]')?.setAttribute("content",THEME()==="neon"?"#07001a":"#000000")}applyTheme();
 let ACX=null;const SOUND=()=>localStorage.getItem("sound")==="on";
 function unlockAudio(){if(ACX)return;try{ACX=new (window.AudioContext||window.webkitAudioContext)();const b=ACX.createBuffer(1,1,22050),s=ACX.createBufferSource();s.buffer=b;s.connect(ACX.destination);s.start(0)}catch(e){}}
@@ -61,7 +61,7 @@ const ic=(n,href="#/activity")=>`<a class="ic" href="${href}" aria-label="${n}">
 function navbar(r){const h=$("#nav");
  if(r==="replay"){h.innerHTML=`${ic("back","javascript:history.back()")}<div class="ttl">Replay</div><div style="width:34px"></div>`;return}
  if(r==="coin"||r==="auditor"){h.innerHTML=`${ic("back",r==="coin"?"#/home":"#/agents")}<div class="ttl">${r==="coin"?"Coin":"Auditor"}</div><div style="width:34px"></div>`;return}
- const t={agents:"Agents",activity:"Activity",account:"Account"}[r];
+ const t={agents:"Agents",activity:"Activity",account:"Account",feed:"Live Feed"}[r];
  const handle=S?.settings?.["desk.fomo_handle"]||"";
  h.innerHTML=`<a class="av" href="#/account">${esc((handle[0]||"D").toUpperCase())}</a><a class="who" href="#/account">${t||'Grok Bot<span>›</span>'}</a>${ic("search","#/activity")}${ic("bell","#/activity")}`}
 function upd(){const n=$("#nav");if(!n||!S)return;let u=$("#upd");if(!u){u=document.createElement("span");u.id="upd";n.appendChild(u)}const a=Math.max(0,Math.round((Date.now()-(+new Date(S.ts)||LAST))/1000));u.textContent=a<60?`updated ${a}s ago`:`updated ${Math.round(a/60)}m ago`;u.className=a>90?"old":""}
@@ -72,15 +72,17 @@ function render(){const r=route();navbar(r);errRow();
  const v=$("#view"),car=v.querySelector(".car"),sl=car?car.scrollLeft:0;
  if(ERR==="nolink"){v.innerHTML=pair();bindPair();return}
  if(!S){v.innerHTML=ERR?`<div class="empty"><b>Desk offline</b>Can't reach your desk right now. Retrying every 15 seconds.</div>`:skeleton(r);return}
- v.dataset.r=r;v.innerHTML=({home,agents,auditor,coin,activity,account,replay}[r]||home)();
+ v.dataset.r=r;v.innerHTML=({home,agents,auditor,coin,activity,account,replay,feed}[r]||home)();
  const c2=v.querySelector(".car");if(c2){c2.scrollLeft=sl;c2.onscroll=()=>{const i=Math.round(c2.scrollLeft/(c2.firstElementChild.offsetWidth+12));v.querySelectorAll(".dots i").forEach((d,j)=>d.classList.toggle("on",j===i))}}
  if(r==="home"){drawChart(false);rollOdo();bindHome(v);drawMiniCharts();if(BALDIR&&!RM){const b=$(".big");b.classList.add(BALDIR>0?"gu":"gd");setTimeout(()=>b.classList.remove("gu","gd"),1400);if(BALDIR>0)burstAt(".big");}BALDIR=0;if(PENDBURST){burstAt(".big");win();PENDBURST=0}v.querySelectorAll(".range button").forEach(b=>b.onclick=()=>{RANGE=b.dataset.r;localStorage.setItem("range",RANGE);v.querySelectorAll(".range button").forEach(x=>x.classList.toggle("on",x===b));drawChart(true)})}
  if(r==="coin")drawCandles();if(r==="replay")rpBind(v);bindStars(v);if(r==="auditor")drawDisc();
- if(r==="activity"||r==="home")bindFlip(v);bindAcct(v);v.querySelectorAll(".seg a").forEach(a=>a.onclick=e=>{e.preventDefault();SEG=a.dataset.s;render()})}
+ if(r==="activity"||r==="home")bindFlip(v);bindAcct(v);v.querySelectorAll(".seg a").forEach(a=>a.onclick=e=>{e.preventDefault();SEG=a.dataset.s;render()});
+ if(r==="feed"){bindFeed(v);startFeedPoll()}else stopFeedPoll()}
 function skeleton(r){const b=(h,w,mt,br)=>`<div class="sk" style="height:${h}px;${w?"width:"+w+";":""}margin-top:${mt||0}px;${br?"border-radius:"+br+"px":""}"></div>`,rows=n=>`<div class="list nb">${Array.from({length:n},()=>`<div class="li"><div class="sk" style="width:32px;height:32px;border-radius:50%"></div><div class="m">${b(12,"60%")}${b(10,"35%",6)}</div>${b(12,"20%")}</div>`).join("")}</div>`;
  r=r||route();if(r==="coin")return`<div class="skw"><div style="display:flex;gap:12px;align-items:center;margin-top:4px"><div class="sk" style="width:48px;height:48px;border-radius:50%"></div><div style="flex:1">${b(22,"55%")}${b(12,"30%",6)}</div></div>${b(160,"",12,16)}${b(48,"",8,24)}${b(18,"30%",16)}${rows(4)}</div>`;
  if(r==="agents"||r==="auditor")return`<div class="skw">${b(28,"40%",4)}${b(200,"",12,24)}${b(18,"35%",16)}${rows(5)}</div>`;
  if(r==="activity")return`<div class="skw">${b(28,"40%",4)}${b(34,"",12,9)}${rows(7)}</div>`;
+ if(r==="feed")return`<div class="skw">${b(28,"40%",4)}${rows(6)}</div>`;
  if(r==="account")return`<div class="skw">${b(28,"40%",4)}${b(110,"",12,16)}${b(160,"",16,16)}${b(200,"",16,16)}</div>`;
  return`<div class="skw">${b(26,"",4)}${b(46,"60%",8)}${b(16,"40%",8)}${b(120,"",12,16)}${b(30,"",8,10)}${b(18,"30%",12)}${rows(1)}${b(18,"35%",12)}${b(70,"",6,14)}${b(18,"40%",12)}${rows(2)}</div>`}
 function pair(){return`<div class="pt">Link your desk</div><div class="list nb" style="padding:20px 16px"><div class="l2" style="font-size:var(--t2)">Paste the desk link from your chat. It ends in <span class="mono">#d=…</span> and is saved on this phone only.</div><input id="lnk" class="f" placeholder="Paste link" autocomplete="off" autocapitalize="off"><button id="lnkb" class="btn">Link desk</button></div>`}
@@ -94,6 +96,7 @@ function home(){const start=C?.start||S.settings?.["desk.paper_start_stack"]||S.
  const paused=!!S.trading_paused, stats=S.stats||{};
  return `<div class="homev12">
  <div class="hrow slim">${healthDot(healthy,age)}<span class="hchip muted">${S.mode}</span>
+ <a class="hchip feed-jump" href="#/feed">Live · ${(S.feed&&S.feed.n)||(FEED&&FEED.n)||"–"}</a>
  <button class="pause ${paused?"on":""}" id="pauseBtn" aria-pressed="${paused}">${paused?"▶ Resume":"⏸ Pause"}</button></div>
  <div class="hero" id="heroTap" role="button" tabindex="0" aria-label="Open balance details">
   <div class="hero-top"><div class="big num" aria-label="${bal}">${html}</div>${paused?'<span class="pill p-n">Paused</span>':""}</div>
@@ -177,14 +180,17 @@ function bindHome(v){
   cv.onpointerup=cv.onpointercancel=()=>{dragging=0};
  }
 }
-async function togglePause(){if(PAUSEBUSY)return;const put=S?.control_put,k=CK();
- if(!put){alert("Pause link not ready yet — wait for the next desk update.");return}
- if(!k){alert("This phone is missing the pause key. Ask Grok Bot for a fresh desk link with &k=…");return}
- PAUSEBUSY=1;const want=!S.trading_paused;try{
-  const r=await fetch(put,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({paused:want,k,ts:new Date().toISOString()})});
-  if(!r.ok)throw new Error("HTTP "+r.status);
-  S.trading_paused=want;render();setTimeout(()=>tick(),800);
- }catch(e){alert("Couldn't update pause ("+e.message+"). Try again in a moment.")}
+async function togglePause(){if(PAUSEBUSY)return;const k=CK();
+ if(!k){alert("This phone is missing the pause key. Open the fresh desk link from Discord (it has &k=…), then Add to Home Screen.");return}
+ PAUSEBUSY=1;const want=!S.trading_paused;
+ const body=JSON.stringify({paused:want,k,ts:new Date().toISOString()});
+ const putOnce=async()=>{const put=S?.control_put;if(!put)throw new Error("pause URL not ready");
+  const r=await fetch(put,{method:"PUT",headers:{"Content-Type":"application/json","x-upsert":"true"},body});
+  if(!r.ok)throw new Error("HTTP "+r.status);return r};
+ try{
+  try{await putOnce()}catch(e1){await tick();await putOnce()}
+  S.trading_paused=want;render();setTimeout(()=>tick(),1200);
+ }catch(e){alert("Couldn't update pause ("+e.message+"). Wait for Live, then try again.")}
  finally{PAUSEBUSY=0}}
 function drawMiniCharts(){const stats=S?.stats||{},G=getComputedStyle(document.documentElement),cg=G.getPropertyValue("--g").trim()||"#00d35a",cr=G.getPropertyValue("--r").trim()||"#ff453a",cl=G.getPropertyValue("--l3").trim()||"rgba(235,235,245,.3)";
  const fit=(id)=>{const cv=$(id);if(!cv)return null;const dpr=devicePixelRatio||1,W=cv.clientWidth||(cv.parentElement&&cv.parentElement.clientWidth)||280,H=cv.clientHeight||100;cv.width=W*dpr;cv.height=H*dpr;const x=cv.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);return{x,W,H}};
@@ -346,3 +352,40 @@ function rpBind(v){const m=RP.m,st=rpSteps(m),tot=st.reduce((a,s)=>a+s.d,0);rpDr
  RP.timer=setInterval(()=>{if(!RP.play||route()!=="replay")return;RP.t=Math.min(tot,RP.t+100);if(RP.t>=tot)RP.play=0;upd()},100);
  v.querySelectorAll("[data-rp]").forEach(b=>b.onclick=()=>{const k=b.dataset.rp;if(k==="play"){if(RP.t>=tot)RP.t=0;RP.play=!RP.play}if(k==="restart"){RP.t=0;RP.play=1}if(k==="next"){const[c]=rpAt(st,RP.t);RP.t=c+1<st.length?start(c+1):tot}upd()});
  v.querySelectorAll(".rpst").forEach(el=>el.onclick=()=>{RP.t=start(+el.dataset.i)+1;upd()})}
+
+/* ---------- v13 live feed ---------- */
+const STLABEL={watching:"Watching",graduated:"Graduated",auditing:"Auditing",passed:"Passed",bought:"Bought",failed:"Failed",expired:"Expired"};
+const CKLABEL={grad:"graduated",liq:"liquidity",mint:"mint/freeze",age:"pool age",lp:"LP locked",top10:"top10",dev:"dev %",bund:"bundled",score:"score"};
+function ageTxt(s){s=Math.max(0,s|0);if(s<60)return s+"s";if(s<3600)return Math.floor(s/60)+"m";return Math.floor(s/3600)+"h"+Math.floor((s%3600)/60)+"m"}
+function leftTxt(s){s=Math.max(0,s|0);const m=Math.floor(s/60),ss=s%60;return m+":"+String(ss).padStart(2,"0")}
+function startFeedPoll(){stopFeedPoll();let first=!FEED;const go=async()=>{if(route()!=="feed"||!DP())return;try{const d=await get("feed.json");const prev={...FEEDPREV};(d.items||[]).forEach(it=>{if(!(it.m in FEEDSEEN))FEEDSEEN[it.m]=first?2:1;FEEDPREV[it.m]=it.st});first=0;FEED=Object.assign(d,{_prev:prev});render()}catch(e){}};
+ go();FEEDTIMER=setInterval(go,5000)}
+function stopFeedPoll(){if(FEEDTIMER){clearInterval(FEEDTIMER);FEEDTIMER=0}}
+function feed(){const d=FEED||{items:[],floor:(S.feed&&S.feed.floor)||10000,window_s:(S.feed&&S.feed.window_s)||3600,n:0,ts:S.feed&&S.feed.ts};
+ const floor=d.floor||10000,items=d.items||[];
+ if(!FEED&&DP())get("feed.json").then(x=>{FEED=x;(x.items||[]).forEach(it=>FEEDSEEN[it.m]=FEEDSEEN[it.m]||2);render()}).catch(()=>{});
+ return `<div class="feed-view"><div class="feed-head"><div class="pt">Live Feed</div><div class="feed-meta num">${items.length} · $${kfmt(floor)} floor · 60m window</div></div>
+ <div class="feed-list" id="feedList">${items.length?items.map(feedRow).join(""):`<div class="empty"><b>Waiting for new coins</b>pump.fun and other launchpads show up here as they appear.</div>`}</div></div>`}
+function feedRow(it){
+ const fresh=FEEDSEEN[it.m]===1; if(fresh) setTimeout(()=>{FEEDSEEN[it.m]=2},500);
+ const stCh=FEED&&FEED._prev&&FEED._prev[it.m]&&FEED._prev[it.m]!==it.st;
+ const pct=Math.max(0,Math.min(100,100*(it.liq||0)/(FEED&&FEED.floor||10000)));
+ const hot=(it.left||0)<300&&(it.st==="watching"||it.st==="graduated");
+ const checks=(it.ck||[]).map(c=>{const id=c[0],ok=c[1],why=c[2];const cls=ok===1?"ok":ok===0?"bad":"";
+  return `<span class="fck ${cls}"><span class="id">${esc(CKLABEL[id]||id)}</span> ${ok===1?"✓":ok===0?"✕":"·"} ${esc(why)}</span>`}).join("");
+ return `<a class="frow ${fresh?"fresh":""} ${stCh?"st-chg":""}" href="#/coin/${esc(it.m)}">
+  ${logo(it.n,it.img||imgOf(it.m),it.m,40)}
+  <div class="fmain"><div class="fname">${esc((it.s||it.n||"").slice(0,18))}<span class="fage">${ageTxt(it.age)} · ${esc(it.lp||"pump")}</span></div>
+   <div class="fliq"><div class="bar ${pct<40?"low":""}"><i style="width:${pct.toFixed(1)}%"></i></div>
+   <div class="lbl"><span>liq ${_escLiq(it.liq)}</span><span>$${kfmt(FEED&&FEED.floor||10000)}</span></div></div></div>
+  <div class="fside"><span class="fpill ${esc(it.st)}">${STLABEL[it.st]||it.st}</span>
+   ${(it.st==="watching"||it.st==="graduated"||it.st==="auditing")?`<span class="fcountdown ${hot?"hot":""}">${leftTxt(it.left)}</span>`:""}</div>
+  <div class="fchecks">${checks}</div></a>`}
+function _escLiq(v){return v==null?"—":"$"+kfmt(v)}
+function bindFeed(v){/* list scrolls itself; countdown tick */ 
+ const tickLeft=()=>{if(route()!=="feed"||!FEED)return;const now=Date.now();
+  v.querySelectorAll(".frow").forEach((el,i)=>{const it=(FEED.items||[])[i];if(!it)return;const cd=el.querySelector(".fcountdown");if(!cd)return;
+   /* left is absolute remaining from publish; approx by age drift using FEED.ts */
+   const pub=+new Date(FEED.ts)||now; const elapsed=Math.max(0,(now-pub)/1000); const left=Math.max(0,(it.left||0)-elapsed);
+   cd.textContent=leftTxt(left);cd.classList.toggle("hot",left<300&&(it.st==="watching"||it.st==="graduated"))})};
+ clearInterval(bindFeed._t);bindFeed._t=setInterval(tickLeft,1000);tickLeft()}
