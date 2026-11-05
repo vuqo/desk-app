@@ -141,3 +141,4 @@ canvas.chart{height:clamp(70px,16dvh,150px);margin:6px 0 2px}
 .sh{margin:6px 0 4px}
 #nav{position:relative}#upd{position:absolute;left:50%;bottom:0;transform:translateX(-50%);font:500 10px var(--text);color:var(--l3);white-space:nowrap}#upd.old{color:var(--o)}
 main{scrollbar-width:none}main::-webkit-scrollbar{display:none}.hact{min-height:50px;flex-grow:0;flex-basis:auto}
+.cd{flex:1;min-height:0}
