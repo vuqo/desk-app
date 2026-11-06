@@ -387,7 +387,7 @@ nav#tabs a.on[data-t=account]{color:var(--pk)}
   display:grid!important;
   grid-template-columns:minmax(300px,1.2fr) minmax(240px,0.95fr) minmax(280px,1.15fr);
   grid-template-areas:
-    "bal pos agents"
+    "bal hold agents"
     "act wallets agents";
   gap:14px;
   align-items:stretch;
@@ -408,9 +408,7 @@ nav#tabs a.on[data-t=account]{color:var(--pk)}
 .dpanel .dphd h2{margin:0;font:700 16px var(--disp);letter-spacing:-.02em}
 .dpanel .dphd a,.dpanel .dphd .meta{color:var(--l2);font-size:12px;font-weight:600}
 .dpanel .dpbody{flex:1;min-height:0;overflow:auto}
-.desk-pos{grid-area:pos;min-height:140px}
-.desk-pos .pos-sec+.pos-sec{margin-top:12px;padding-top:10px;border-top:.5px solid var(--sep)}
-.desk-pos .pos-h{font:600 11px var(--text);color:var(--l2);letter-spacing:.04em;text-transform:uppercase;margin:0 0 6px}
+.desk-hold{grid-area:hold;min-height:180px}
 .desk-agents{grid-area:agents}
 .desk-wallets{grid-area:wallets;min-height:140px}
 .desk-inc,.desk-feed{display:none!important}
@@ -419,9 +417,6 @@ nav#tabs a.on[data-t=account]{color:var(--pk)}
 .desk-agents .dcard .k{font-size:14px}
 .desk-agents .dcard .ks{font-size:10px}
 .desk-wallets .wrow{margin:0 0 6px;padding:10px 12px}
-.desk-pos .list,.desk-closed .list{background:transparent}
-.desk-pos .li,.desk-closed .li{padding-left:0;padding-right:0}
-.desk-pos .li+.li:before,.desk-closed .li+.li:before{left:48px}
 /* non-home routes: comfortable reading width */
 #view[data-r=feed] .feed-view,#view[data-r=activity],#view[data-r=account],#view[data-r=wallets],#view[data-r=agents],#view[data-r=coin],#view[data-r=auditor],#view[data-r=replay]{max-width:920px;margin:0 auto}
 #view[data-r=feed] .feed-list{margin:0;padding:0 0 28px}
@@ -435,7 +430,7 @@ html[data-theme=neon] .dpanel,html[data-theme=neon] .homev12.desk-home .home-sti
 #view[data-r=home] .homev12.desk-home,.homev12.desk-home{
   grid-template-columns:1fr 1fr;
   grid-template-areas:
-    "bal pos"
+    "bal hold"
     "agents agents"
     "act wallets";
   min-height:auto;
@@ -457,5 +452,38 @@ html[data-theme=neon] .dpanel,html[data-theme=neon] .homev12.desk-home .home-sti
 .desk-agents .dcard{min-height:82px}
 }
 
+
+/* ===== Holdings cards (v19) ===== */
+.hold-list{display:flex;flex-direction:column;gap:10px}
+.hold{background:var(--c2);border-radius:14px;padding:10px 12px;border:1px solid rgba(255,255,255,.04)}
+.hold.on{border-color:rgba(0,230,118,.28);box-shadow:0 0 0 1px rgba(0,230,118,.12)}
+.hold.closed{opacity:.92}
+.hold-top{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:inherit;text-align:left;padding:0;cursor:pointer}
+.hold-top .m{flex:1;min-width:0}
+.hold-top .t{font:600 15px var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hold-top .s{font-size:12px;color:var(--l2);margin-top:2px}
+.hold-pct{font:700 16px var(--disp)}
+.symtag{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:6px;background:rgba(255,255,255,.06);color:var(--l2);font:600 10px var(--mono);vertical-align:middle}
+.hold-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 6px}
+.hold-st{font-size:12px;flex:1;min-width:80px}
+.hold-fomo,.hold a.sell{margin-left:auto}
+.hold-chart{margin-top:4px;border-radius:12px;overflow:hidden;background:#0b0b0b}
+.hold-chart.big iframe{min-height:280px}
+.hold-chart.empty{padding:18px;text-align:center;font-size:12px}
+.hold-body.collapse{display:none}
+.hold-mobile{margin:8px 0 4px}
+.hold-mobile .hold{background:var(--c1)}
+@media (min-width:1024px){
+.hold-mobile{display:none!important}
+.desk-hold .hold-chart iframe{height:140px}
+.desk-hold .hold.on .hold-chart iframe{height:280px}
+.desk-hold .dpbody{max-height:calc(100dvh - 180px);overflow:auto}
+}
+
+.badge{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:999px;font:700 10px var(--text);letter-spacing:.03em;vertical-align:middle;text-transform:uppercase}
+.badge.desk{background:rgba(0,230,118,.16);color:var(--g)}
+.badge.wallet{background:rgba(100,181,255,.16);color:#64B5FF}
+.fpill.holding{background:rgba(0,230,118,.16);color:var(--g)}
+.fpill.sold{background:rgba(255,255,255,.08);color:var(--l2)}
 /* strategy source tag */
 .stag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;font-size:10px;font-weight:600;letter-spacing:.02em;background:rgba(100,210,255,.14);color:var(--cy,#64d2ff);vertical-align:middle}

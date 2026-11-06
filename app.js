@@ -23,7 +23,7 @@ async function poll(){if(!DP()){ERR="nolink";render();return}
  try{[S,A,C]=await Promise.all([get("state.json"),get("activity.json"),get("chart.json")]);ERR=null;LAST=Date.now();indexImgs();{const top=(A&&A.items||[]).filter(a=>a.kind==="buy"||(a.kind==="sell"&&!String(a.value).startsWith("-")));const mx=Math.max(0,...top.map(a=>+new Date(a.ts)||0));if(SEENTS&&mx>SEENTS)PENDBURST=1;SEENTS=Math.max(SEENTS||0,mx)||-1}
   const m=location.hash.match(/#\/(?:coin|replay)\/(\w+)/);if(m){const cd=await get("coin/"+m[1]+".json").catch(()=>null);if(cd)coinCache[m[1]]=cd;else COINMISS[m[1]]=1}
  }catch(e){ERR=e.message}NEXT=Date.now()+15000;render()}
-let prevStack=0,BALDIR=0,PENDBURST=0,SEENTS=0,P=[],SHEET=0,SCRUB=null,CHSERIES=null,PAUSEBUSY=0,FEED=null,FEEDSEEN={},FEEDPREV={},FEEDTIMER=0,MATCHSHEET=0,WFILTER="",LASTACTID=0,WALFLASH={};const DEMO=DEMO0;
+let prevStack=0,BALDIR=0,PENDBURST=0,SEENTS=0,P=[],SHEET=0,SCRUB=null,CHSERIES=null,PAUSEBUSY=0,FEED=null,FEEDSEEN={},FEEDPREV={},FEEDTIMER=0,MATCHSHEET=0,WFILTER="",LASTACTID=0,WALFLASH={},HOLD_EXP=null;const DEMO=DEMO0;
 function burstAt(sel){if(RM)return;const el=$(sel);if(!el)return;const r=el.getBoundingClientRect(),cx=r.left+Math.min(r.width,260)/2,cy=r.top+r.height/2,cols=["#00d35a","#64d2ff","#ffd60a","#ff6b9a","#fff","#00d35a"];
  for(let i=0;i<36;i++){const a=Math.random()*6.283,v=2+Math.random()*6;P.push({x:cx,y:cy,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2.5,c:cols[i%6],s:2+Math.random()*3,l:1,st:Math.random()<.35,r:Math.random()*6})}fxKick()}
 const TW=Array.from({length:22},()=>({x:Math.random(),y:Math.random(),s:.5+Math.random()*1.3,ph:Math.random()*6.28,v:.004+Math.random()*.008}));
@@ -90,7 +90,7 @@ function dataSig(){if(!S)return ERR||"0";
  /* omit S.ts — age label updates via errRow/upd without rebuilding DOM */
  const pos=(S.positions||[]).map(p=>p.mint+":"+p.status+":"+(p.pnl_usd||p.size_usd||0)).join(",");
  const feed=((FEED&&FEED.items)||[]).slice(0,12).map(i=>i.m+":"+i.st+":"+i.liq).join(",");
- const cp=S.copy||{},cact=cp.active||{};return [S.stack,S.free,S.trading_paused,S.pnl_today,pos,(S.feed&&S.feed.n)||0,SHEET,MATCHSHEET,SCRUB&&SCRUB.v,SEG,RANGE,WFILTER,(FEED&&FEED.ts)||"",feed,S.mode,cp.buys_tonight,cact.matched,cact.status,(cp.wallets||[]).map(w=>w.id+":"+w.last).join(",")].join("|")}
+ const cp=S.copy||{},cact=cp.active||{};return [S.stack,S.free,S.trading_paused,S.pnl_today,pos,(S.feed&&S.feed.n)||0,SHEET,MATCHSHEET,SCRUB&&SCRUB.v,SEG,RANGE,WFILTER,(FEED&&FEED.ts)||"",feed,S.mode,cp.buys_tonight,cact.matched,cact.status,(cp.wallets||[]).map(w=>w.id+":"+w.last).join(","),HOLD_EXP].join("|")}
 function render(force){const r=route();navbar(r);errRow();
  document.querySelectorAll("#tabs a").forEach(a=>a.classList.toggle("on",a.dataset.t===r||(r==="auditor"&&a.dataset.t==="home")||(r==="agents"&&a.dataset.t==="home")||(r==="coin"&&a.dataset.t==="home")));
  const v=$("#view"),car=v.querySelector(".car"),sl=car?car.scrollLeft:0;const feedSl=v.querySelector("#feedList")?.scrollTop||0;
@@ -123,7 +123,7 @@ function home(){const start=C?.start||S.settings?.["desk.paper_start_stack"]||S.
  const bal="$"+f2(S.stack),html=odo(bal,prevBal);if(prevBal!=null&&prevBal!==bal)BALDIR=S.stack>prevStack?1:-1;prevBal=bal;prevStack=S.stack;
  const age=Math.max(0,Math.round((Date.now()-(+new Date(S.ts)||LAST))/1000)),healthy=age<60;
  const paused=!!S.trading_paused;
- const acts=((A&&A.items)||[]).filter(a=>isDesk()?a.kind==="buy"||a.kind==="sell"||a.kind==="stop":a.kind==="buy"||a.kind==="sell"||a.kind==="stop"||a.kind==="reject"||a.kind==="research").slice(0,12);
+ const acts=((A&&A.items)||[]).filter(a=>isDesk()?a.kind==="buy"||a.kind==="sell"||a.kind==="stop"||a.kind==="wallet":a.kind==="buy"||a.kind==="sell"||a.kind==="stop"||a.kind==="reject"||a.kind==="research"||a.kind==="wallet").slice(0,12);
  return `<div class="homev12${isDesk()?" desk-home":""}">
  <div class="home-sticky">
  <div class="hrow slim">${healthDot(healthy,age)}<span class="hchip muted">${S.mode}</span>
@@ -141,30 +141,58 @@ function home(){const start=C?.start||S.settings?.["desk.paper_start_stack"]||S.
  </div>
  <div class="home-scroll">
   ${deskSection()}
+  ${isDesk()?"":`<section class="hold-mobile"><div class="sh"><h2>Holdings</h2><span class="meta l2">${holdingsList().length}</span></div>${holdingsBlock(true)}</section>`}
   <div class="sh"><h2>Activity</h2><a href="#/activity">See all</a></div>
   <div class="act-home">${homeAct(acts)}</div>
  </div>
  ${deskDashPanels()}
  </div>${SHEET?pnlSheet(start):""}${MATCHSHEET?matchSheet():""}`}
+function actBadge(a){const t=a.title||"",k=a.kind||"";
+ if(k==="wallet"||/^@[\w.]+ (bought|sold)\b/i.test(t))return`<span class="badge wallet">Wallet</span> `;
+ if(/^Desk (bought|sold)\b/i.test(t)||k==="buy"||k==="sell"||k==="stop")return`<span class="badge desk">Desk</span> `;
+ return""}
 function homeAct(it){if(!it.length)return`<div class="wempty">No activity yet tonight.</div>`;
- return`<div class="list">${it.map(a=>{const nm=(a.title||"").replace(/^(Bought|Sold|Stopped out of|Stop|Rejected|Researched|Skipped)\s+/i,"");
+ return`<div class="list">${it.map(a=>{const nm=(a.title||"").replace(/^(Desk bought|Desk sold|Bought|Sold|Stopped out of|Stop|Rejected|Researched|Skipped)\s+/i,"");
   const kind=a.kind||"";const[bg,fg,g]=actIcon(kind);
   const cls=kind==="sell"||(a.value||"").startsWith("+")?"up":kind==="stop"||kind==="reject"||(a.value||"").startsWith("-")?"dn":"";
   const sm=(a.sub||"").match(/\b(kol|dip|breakout|copy|trending|incubator|degen)\b/i);const st=sm?srcTag(sm[1].toLowerCase()):"";
-  return`<a class="li" href="${a.mint?"#/coin/"+esc(a.mint):"#/activity"}">${a.mint?logo(nm,imgOf(a.mint),a.mint,36):`<div class="ico" style="background:${bg};color:${fg}">${g}</div>`}<div class="m"><div class="t">${esc(a.title)} ${st}</div><div class="s">${esc(a.sub)} · ${time(a.ts)}</div></div><div class="v num ${cls}">${esc(a.value||"")}</div></a>`}).join("")}</div>`}
+  return`<a class="li" href="${a.mint?"#/coin/"+esc(a.mint):"#/activity"}">${a.mint?logo(nm,imgOf(a.mint),a.mint,36):`<div class="ico" style="background:${bg};color:${fg}">${g}</div>`}<div class="m"><div class="t">${actBadge(a)}${esc(a.title)} ${st}</div><div class="s">${esc(a.sub)} · ${time(a.ts)}</div></div><div class="v num ${cls}">${esc(a.value||"")}</div></a>`}).join("")}</div>`}
+
+
+function heldTxt(s){s=Math.max(0,s|0);if(s<60)return s+"s";if(s<3600)return Math.floor(s/60)+"m";const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h+"h"+m+"m"}
+function dexEmbed(pair){return pair?`https://dexscreener.com/solana/${encodeURIComponent(pair)}?embed=1&theme=dark&info=0&trades=0`:""}
+function holdingsList(){const open=(S.positions||[]).filter(p=>p.status==="open"||p.status==="exiting");
+ const closed=(S.positions||[]).filter(p=>p.status==="closed").slice(0,10);
+ return open.concat(closed)} // open positions = status open/exiting from positions table
+function holdCard(p,compact){const open=p.status==="open"||p.status==="exiting";
+ const pct=p.live_pct!=null?p.live_pct:p.pct; const cls=pct==null?"":pct>=0?"up":"dn";
+ const pctTxt=pct==null?"—":`${pct>=0?"+":""}${Number(pct).toFixed(1)}%`;
+ const exp=HOLD_EXP===p.mint; const pair=p.pair; const embed=dexEmbed(pair);
+ const chart=embed?`<div class="hold-chart${exp?" big":""}"><iframe src="${esc(embed)}" title="${esc(p.symbol||p.name)} chart" loading="lazy" allow="clipboard-write" style="width:100%;height:${exp?(compact?220:280):120}px;border:0;border-radius:12px;background:#0b0b0b"></iframe></div>`:`<div class="hold-chart empty l3">No pair chart yet</div>`;
+ const status=esc(p.exit_status||(open?`holding · stop −${p.stop_pct||6}%`:(p.exit_reason||"closed")));
+ const fomo=p.link?ext(p.link, open?"Sell on FOMO":"Open on FOMO", open?"sell hold-fomo":"hold-fomo"):"";
+ return `<article class="hold${open?"":" closed"}${exp?" on":""}" data-hold="${esc(p.mint)}">
+  <button type="button" class="hold-top" data-hold-toggle="${esc(p.mint)}" aria-expanded="${exp}">
+   ${logo(p.name,p.image||imgOf(p.mint),p.mint,compact?32:40)}
+   <div class="m"><div class="t">${esc(p.name)} <span class="symtag">${esc(p.symbol||"")}</span> ${srcTag(p.source)}</div>
+    <div class="s num">entry $${p.entry_price!=null?Number(p.entry_price).toPrecision(4):"—"} · size ${usd(p.size_usd)} · held ${heldTxt(p.held_s)}</div></div>
+   <div class="v num ${cls}"><div class="hold-pct">${pctTxt}</div><div class="s">${open?(p.live_pnl!=null?usd(p.live_pnl):"open"):usd(p.pnl_usd)}</div></div>
+  </button>
+  <div class="hold-meta"><span class="pill ${open?"p-g":"p-n"}">${open?(p.status==="exiting"?"Exiting":"Open"):"Closed"}</span><span class="l2 hold-st">${status}</span>${fomo}</div>
+  <div class="hold-body${exp||!compact?"":" collapse"}">${chart}</div>
+ </article>`}
+function holdingsBlock(compact){const it=holdingsList();
+ if(!it.length)return`<div class="wempty">No holdings yet — buys show up here.</div>`;
+ return`<div class="hold-list">${it.map(p=>holdCard(p,compact)).join("")}</div>`}
 
 function deskDashPanels(){if(!isDesk())return"";
- const open=(S.positions||[]).filter(p=>p.status==="open"||p.status==="exiting");
- const closed=(S.positions||[]).filter(p=>p.status==="closed").slice(0,8);
+ const it=holdingsList();
+ const open=it.filter(p=>p.status==="open"||p.status==="exiting").length;
  const cp=S.copy||{},wallets=(cp.wallets||[]).slice(0,8);
  const all=deskCards();
- const closedRows=closed.map(p=>{const pnl=p.pnl_usd||0;const cls=pnl>=0?"up":"dn";return`<a class="li" href="#/coin/${esc(p.mint)}">${logo(p.name,p.image||imgOf(p.mint),p.mint,32)}<div class="m"><div class="t">${esc(p.name)} ${srcTag(p.source)}</div><div class="s num">${usd(p.size_usd)} · ${esc(p.exit_reason||"exit")}</div></div><div class="v num ${cls}">${pnl>=0?"+":"-"}$${f2(Math.abs(pnl))}</div></a>`}).join("");
- return `<section class="dpanel desk-only desk-pos"><div class="dphd"><h2>Positions</h2><span class="meta">${open.length} open · ${closed.length} closed</span></div><div class="dpbody">
-  <div class="pos-sec"><div class="pos-h">Open</div>${open.length?`<div class="list nb">${open.map(posRow).join("")}</div>`:`<div class="wempty">No open positions</div>`}</div>
-  <div class="pos-sec"><div class="pos-h">Closed</div>${closed.length?`<div class="list nb">${closedRows}</div>`:`<div class="wempty">No closed trades yet</div>`}</div>
- </div></section>
+ return `<section class="dpanel desk-only desk-hold"><div class="dphd"><h2>Holdings</h2><span class="meta">${open} open · ${it.length} total</span></div><div class="dpbody">${holdingsBlock(false)}</div></section>
  <section class="dpanel desk-only desk-agents"><div class="dphd"><h2>Agents</h2><a href="#/agents">All</a></div><div class="dpbody"><div class="agrid">${all.join("")}</div></div></section>
- <section class="dpanel desk-only desk-wallets"><div class="dphd"><h2>Wallets</h2><a href="#/wallets">${cp.watching||wallets.length||0} watching</a></div><div class="dpbody">${wallets.length?wallets.map(w=>`<div class="wrow"><span class="ck">✓</span><div class="m"><div class="t">${esc(w.addr||w.id)}</div><div class="s">${esc(w.last||"idle")}</div></div><span class="pill-30">30d ${w.pnl_30d!=null?(w.pnl_30d>=0?"+":"")+f2(w.pnl_30d):"—"}</span></div>`).join(""):`<div class="wempty">Copy desk warming up</div>`}</div></section>`}
+ <section class="dpanel desk-only desk-wallets"><div class="dphd"><h2>Wallets</h2><a href="#/wallets">${cp.watching||wallets.length||0} watching</a></div><div class="dpbody">${wallets.length?wallets.map(w=>`<div class="wrow"><span class="ck">✓</span><div class="m"><div class="t">${esc(w.handle?"@"+String(w.handle).replace(/^@/,""):(w.addr||w.id))}</div><div class="s">${esc(w.last||"idle")}</div></div><span class="pill-30">30d ${w.pnl_30d!=null?(w.pnl_30d>=0?"+":"")+f2(w.pnl_30d):"—"}</span></div>`).join(""):`<div class="wempty">Copy desk warming up</div>`}</div></section>`}
 function deskSection(){const cp=S.copy,n=cp?.watching??0;
  const hd=`<div class="desk-hd"><h2>Copy desk</h2><a class="sub" href="#/wallets">${n?n+" wallets":"Wallets"}</a></div>`;
  return hd+`<div class="desk-car" id="deskCar">${deskCards().join("")}</div>`}
@@ -238,10 +266,13 @@ function drawChart(anim){const cv=$("#ch");if(!cv)return;const dpr=devicePixelRa
   if(k<1)requestAnimationFrame(frame)}
  frame()}
 /* ---------- home binds + mini charts ---------- */
+function bindHoldings(v){v.querySelectorAll("[data-hold-toggle]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();const m=b.dataset.holdToggle;HOLD_EXP=HOLD_EXP===m?null:m;render(1)});
+ v.querySelectorAll(".hold-fomo,.hold a.sell").forEach(a=>a.onclick=e=>e.stopPropagation())}
 function bindHome(v){
  const hero=$("#heroTap");if(hero){const open=e=>{if(e.target.closest&&e.target.closest(".pause,#ch,.range,.desk-car,#openMatch"))return;SHEET=1;MATCHSHEET=0;render()};hero.onclick=open;hero.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();open(e)}}};
  const dim=$("#shdim"),cl=$("#shclose");if(dim)dim.onclick=()=>{SHEET=0;MATCHSHEET=0;render()};if(cl)cl.onclick=()=>{SHEET=0;MATCHSHEET=0;render()};
  const pb=$("#pauseBtn");if(pb)pb.onclick=e=>{e.preventDefault();e.stopPropagation();togglePause()};
+ bindHoldings(v);
  const om=v.querySelector("#openMatch");if(om)om.onclick=e=>{e.preventDefault();e.stopPropagation();MATCHSHEET=1;SHEET=0;render()};
  const cv=$("#ch");if(cv&&CHSERIES&&CHSERIES.length){
   const hit=ev=>{const r=cv.getBoundingClientRect(),x=((ev.touches?ev.touches[0].clientX:ev.clientX)-r.left)/Math.max(1,r.width);
@@ -312,13 +343,13 @@ function agents(){return`<div class="pt">Agents</div>${carousel()}${watchSec()}<
 /* ---------- activity ---------- */
 function actIcon(k){return k==="buy"?["rgba(10,132,255,.2)","var(--b)","↗"]:k==="sell"?["rgba(0,211,90,.18)","var(--g)","$"]:k==="stop"?["rgba(255,69,58,.16)","var(--r)","!"]:["#2c2c2e","var(--l2)","×"]}
 function actList(it,emptyText){if(!it.length)return`<div class="list nb"><div class="empty" style="padding:28px 20px">${emptyText}</div></div>`;
- return`<div class="list">${it.map(a=>{const[bg,fg,g]=actIcon(a.kind);const sm=(a.sub||"").match(/\b(kol|dip|breakout|copy|trending|incubator|degen)\b/i);const st=sm?srcTag(sm[1].toLowerCase()):"";if(FLIP&&(a.kind==="buy"||a.kind==="sell"||a.kind==="stop"))return flipCard(a,bg,fg,g);return`<a class="li" href="${a.mint?"#/coin/"+esc(a.mint):"#/activity"}"><div class="ico" style="background:${bg};color:${fg}">${g}</div><div class="m"><div class="t">${esc(a.title)} ${st}</div><div class="s">${esc(a.sub)}</div></div><div class="v num ${a.kind==="reject"?"l3":a.kind==="stop"?"dn":"up"}">${esc(a.value)}<div class="s l3">${time(a.ts)}</div></div></a>`}).join("")}</div>`}
+ return`<div class="list">${it.map(a=>{const[bg,fg,g]=actIcon(a.kind);const sm=(a.sub||"").match(/\b(kol|dip|breakout|copy|trending|incubator|degen)\b/i);const st=sm?srcTag(sm[1].toLowerCase()):"";if(FLIP&&(a.kind==="buy"||a.kind==="sell"||a.kind==="stop"))return flipCard(a,bg,fg,g);return`<a class="li" href="${a.mint?"#/coin/"+esc(a.mint):"#/activity"}"><div class="ico" style="background:${bg};color:${fg}">${g}</div><div class="m"><div class="t">${actBadge(a)}${esc(a.title)} ${st}</div><div class="s">${esc(a.sub)}</div></div><div class="v num ${a.kind==="reject"?"l3":a.kind==="stop"?"dn":"up"}">${esc(a.value)}<div class="s l3">${time(a.ts)}</div></div></a>`}).join("")}</div>`}
 let FLIP=false;const FLIPPED=new Set();
 function flipCard(a,bg,fg,g){const d=coinCache[a.mint],L=d?.audit?.layers||[],an=d?.analysis,on=FLIPPED.has(a.id);const sm=(a.sub||"").match(/\b(kol|dip|breakout|copy|trending|incubator|degen)\b/i);const st=sm?srcTag(sm[1].toLowerCase()):"";
  const back=d===undefined?'<div class="l3" style="font-size:var(--t2)">Loading why…</div>':!L.length?'<div class="l3" style="font-size:var(--t2)">No audit saved for this coin.</div>':
   `<div class="why">${L.map(l=>`<div class="wy"><span class="ck ${l.pass===true?"ok":l.pass===false?"bad":""}">${l.pass===true?"✓":l.pass===false?"✕":l.n}</span><span class="wn">${esc(l.name)}</span><span class="wv num">${esc(l.value)}</span></div>`).join("")}</div>${an?`<div class="l2 num" style="font-size:var(--t1);margin-top:8px">Analyst score <b class="${an.passed?"up":"dn"}">${esc(an.score)}</b> · passes from ${esc(S.settings["analyst.min_score"])}</div>`:""}${a.mint?`<a class="rpb" href="#/replay/${esc(a.mint)}">▶ Replay</a>`:""}`;
- return`<div class="fc${on?" on":""}" data-id="${esc(a.id)}" data-m="${esc(a.mint)}" role="button" tabindex="0" aria-pressed="${on}"><div class="fi"><div class="ff li">${a.mint?logo(a.title.replace(/^(Bought|Sold|Stopped out of|Stop)\s+/,""),imgOf(a.mint)||d?.image,a.mint):`<div class="ico" style="background:${bg};color:${fg}">${g}</div>`}<div class="m"><div class="t">${esc(a.title)} ${st}</div><div class="s">${esc(a.sub)} · <span style="color:var(--cy)">tap for why</span></div></div><div class="v num ${a.kind==="stop"?"dn":"up"}">${esc(a.value)}<div class="s l3">${time(a.ts)}</div></div></div>
- <div class="fb"><div class="hd2"><b>Why the desk bought ${esc(a.title.replace(/^(Bought|Sold|Stopped out of|Stop)\s+/,""))}</b>${a.mint?`<a href="#/coin/${esc(a.mint)}" class="l2" style="font-size:var(--t1)">Coin ›</a>`:""}</div>${back}</div></div></div>`}
+ return`<div class="fc${on?" on":""}" data-id="${esc(a.id)}" data-m="${esc(a.mint)}" role="button" tabindex="0" aria-pressed="${on}"><div class="fi"><div class="ff li">${a.mint?logo(a.title.replace(/^(Desk bought|Desk sold|Bought|Sold|Stopped out of|Stop)\s+/,""),imgOf(a.mint)||d?.image,a.mint):`<div class="ico" style="background:${bg};color:${fg}">${g}</div>`}<div class="m"><div class="t">${esc(a.title)} ${st}</div><div class="s">${esc(a.sub)} · <span style="color:var(--cy)">tap for why</span></div></div><div class="v num ${a.kind==="stop"?"dn":"up"}">${esc(a.value)}<div class="s l3">${time(a.ts)}</div></div></div>
+ <div class="fb"><div class="hd2"><b>Why the desk bought ${esc(a.title.replace(/^(Desk bought|Desk sold|Bought|Sold|Stopped out of|Stop)\s+/,""))}</b>${a.mint?`<a href="#/coin/${esc(a.mint)}" class="l2" style="font-size:var(--t1)">Coin ›</a>`:""}</div>${back}</div></div></div>`}
 function bindFlip(v){v.querySelectorAll(".fc").forEach(el=>{const t=e=>{if(e.target.closest("a"))return;const id=+el.dataset.id,m=el.dataset.m;FLIPPED.has(id)?FLIPPED.delete(id):FLIPPED.add(id);el.classList.toggle("on");el.classList.remove("anim");void el.offsetWidth;el.classList.add("anim");el.setAttribute("aria-pressed",el.classList.contains("on"));
   if(m&&coinCache[m]===undefined){coinCache[m]=undefined;get("coin/"+m+".json").then(d=>{coinCache[m]=d;render()}).catch(()=>{coinCache[m]=null;render()})}};el.onclick=t;el.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();t(e)}}})}
 function activity(){FLIP=true;setTimeout(()=>FLIP=false);const it=(A&&A.items)||[],f=SEG==="all"?it.filter(a=>SR||a.kind!=="reject"):it.filter(a=>SEG==="trades"?a.kind!=="reject":a.kind==="reject");
@@ -433,7 +464,7 @@ function wallets(){const cp=S.copy;
  });
  return`<div class="whead"><div class="pt">${n} watching</div>${buys?`<span class="buys-pill">+${buys} buys tonight</span>`:""}${cp.active?`<button class="mini" id="openMatch">Live match</button>`:""}</div>
  <div class="wchips">${coins.map(c=>{const key=c.mint||"";const on=(!WFILTER&&!c.mint)||WFILTER===key;return`<button class="wchip ${on?"on":""}" data-wf="${esc(key)}">${esc(c.ticker||"All")}${c.n!=null?" · "+c.n:""}</button>`}).join("")}</div>
- ${rows.length?rows.map(w=>{const flash=WALFLASH[w.id];return`<div class="wrow" data-wid="${esc(w.id)}"><span class="ck">✓</span><div class="m"><div class="t">${esc(w.addr||w.id)}</div><div class="s ${flash?"flash":""}">${esc(w.last||"idle")}</div></div><span class="pill-30">30d ${w.pnl_30d!=null?(w.pnl_30d>=0?"+":"")+f2(w.pnl_30d):"—"}</span></div>`}).join(""):`<div class="wempty">No wallets in this filter.</div>`}
+ ${rows.length?rows.map(w=>{const flash=WALFLASH[w.id];return`<div class="wrow" data-wid="${esc(w.id)}"><span class="ck">✓</span><div class="m"><div class="t">${esc(w.handle?"@"+String(w.handle).replace(/^@/,""):(w.addr||w.id))}</div><div class="s ${flash?"flash":""}">${esc(w.last||"idle")}</div></div><span class="pill-30">30d ${w.pnl_30d!=null?(w.pnl_30d>=0?"+":"")+f2(w.pnl_30d):"—"}</span></div>`}).join(""):`<div class="wempty">No wallets in this filter.</div>`}
  ${MATCHSHEET?matchSheet():""}`}
 function bindWallets(v){v.querySelectorAll("[data-wf]").forEach(b=>b.onclick=()=>{WFILTER=b.dataset.wf||"";render()});bindMatch(v);setTimeout(()=>{Object.keys(WALFLASH).forEach(k=>{if(k!=="_prev")delete WALFLASH[k]})},800)}
 function ensureToast(){let t=$("#toast");if(!t){t=document.createElement("div");t.id="toast";t.className="toast";document.body.appendChild(t)}return t}
@@ -503,7 +534,7 @@ function rpBind(v){const m=RP.m,st=rpSteps(m),tot=st.reduce((a,s)=>a+s.d,0);rpDr
  v.querySelectorAll(".rpst").forEach(el=>el.onclick=()=>{RP.t=start(+el.dataset.i)+1;upd()})}
 
 /* ---------- v13 live feed ---------- */
-const STLABEL={watching:"Watching",graduated:"Graduated",auditing:"Auditing",passed:"Passed",bought:"Bought",failed:"Failed",expired:"Expired"};
+const STLABEL={watching:"Watching",graduated:"Graduated",auditing:"Auditing",passed:"Passed",bought:"Desk holding",holding:"Desk holding",sold:"Desk sold",failed:"Failed",expired:"Expired"};
 const CKLABEL={grad:"graduated",liq:"liquidity",mint:"mint/freeze",age:"pool age",lp:"LP locked",top10:"top10",dev:"dev %",bund:"bundled",score:"score"};
 function ageTxt(s){s=Math.max(0,s|0);if(s<60)return s+"s";if(s<3600)return Math.floor(s/60)+"m";return Math.floor(s/3600)+"h"+Math.floor((s%3600)/60)+"m"}
 function leftTxt(s){s=Math.max(0,s|0);const m=Math.floor(s/60),ss=s%60;return m+":"+String(ss).padStart(2,"0")}
