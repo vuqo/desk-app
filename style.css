@@ -362,16 +362,18 @@ html[data-theme=neon] .fpill.watching{box-shadow:none}
 #view[data-r=wallets]{overflow-y:auto;-webkit-overflow-scrolling:touch}
 @media (prefers-reduced-motion:reduce){.cd,.toast,.wrow .s.flash,.range button.on.live::before{animation:none!important;transition:none!important}}
 
-/* ===== v16 desktop layout (>=1024px); mobile unchanged below ===== */
+/* ===== v19 desktop layout (>=1024px); mobile unchanged below ===== */
 .desk-only{display:none!important}
 @media (min-width:1024px){
 html,body{overflow:auto;height:auto;min-height:100%}
-body{height:auto;min-height:100dvh;display:flex;flex-direction:column}
-body.desk{--desk-pad:24px;background:#000}
-header{padding:10px 28px 8px;max-width:1600px;width:100%;margin:0 auto;box-sizing:border-box}
-#err{max-width:1600px;width:100%;margin:0 auto;box-sizing:border-box}
-main#view{order:3;flex:1;min-height:0;overflow:auto;padding:0 var(--desk-pad) 28px;max-width:1600px;width:100%;margin:0 auto;box-sizing:border-box}
-header{order:0}#err{order:1}nav#tabs{order:2;position:sticky;top:0;z-index:8;flex:none;display:flex;justify-content:center;gap:4px;padding:8px 16px;background:rgba(18,18,18,.94);border-top:0;border-bottom:.5px solid var(--sep);max-width:1600px;width:100%;margin:0 auto;box-sizing:border-box}
+body{height:auto;min-height:100dvh;display:flex;flex-direction:column;padding-bottom:0}
+body.desk{--desk-pad:20px;background:#000}
+body.desk header,body.desk #tabs,body.desk #err{position:relative!important;top:auto!important;z-index:2}
+header{position:relative;padding:10px 28px 8px;max-width:1600px;width:100%;margin:0 auto;box-sizing:border-box;flex:none}
+#err{position:relative;top:auto;max-width:1600px;width:100%;margin:0 auto;box-sizing:border-box;flex:none}
+main#view{order:3;flex:1;min-height:0;overflow:auto;padding:16px var(--desk-pad) 28px;max-width:1600px;width:100%;margin:0 auto;box-sizing:border-box}
+header{order:0}#err{order:1}
+nav#tabs{order:2;position:relative;top:auto;z-index:8;flex:none;display:flex;justify-content:center;gap:4px;padding:8px 16px;background:rgba(18,18,18,.94);border-top:0;border-bottom:.5px solid var(--sep);max-width:1600px;width:100%;margin:0 auto;box-sizing:border-box}
 nav#tabs a{flex:0 0 auto;min-width:88px;min-height:44px;flex-direction:row;gap:8px;padding:0 14px;border-radius:12px;font-size:13px;font-weight:600;color:var(--l2)}
 nav#tabs a svg{width:18px;height:18px}
 nav#tabs a.on{background:var(--c2);color:#fff}
@@ -380,41 +382,46 @@ nav#tabs a.on[data-t=feed]{color:var(--cy)}
 nav#tabs a.on[data-t=wallets]{color:#64B5FF}
 nav#tabs a.on[data-t=activity]{color:var(--y)}
 nav#tabs a.on[data-t=account]{color:var(--pk)}
-.desk-only{display:block!important}
-#view[data-r=home] .homev12.desk-home,.homev12.desk-home{display:grid!important;grid-template-columns:minmax(340px,1.35fr) minmax(280px,1fr) minmax(280px,1fr);grid-template-rows:auto auto 1fr;gap:16px;align-items:start;padding-top:8px;min-height:calc(100dvh - 120px);overflow:visible}
-.homev12.desk-home .home-sticky{grid-column:1;grid-row:1 / span 2;position:static;margin:0;padding:16px;background:var(--c1);border-radius:18px;border:1px solid rgba(255,255,255,.04)}
-.homev12.desk-home .home-sticky .hero .big{--odo-h:48px;font-size:48px;height:48px;line-height:48px}
-.homev12.desk-home .home-sticky canvas.chart{height:200px;margin:8px 0 4px}
-.homev12.desk-home .home-scroll{grid-column:1;grid-row:3;display:flex;flex-direction:column;gap:12px;min-height:0;overflow:auto;padding:0;max-height:none}
+.desk-only{display:flex!important}
+#view[data-r=home] .homev12.desk-home,.homev12.desk-home{
+  display:grid!important;
+  grid-template-columns:minmax(300px,1.2fr) minmax(240px,0.95fr) minmax(280px,1.15fr);
+  grid-template-areas:
+    "bal pos agents"
+    "act wallets agents";
+  gap:14px;
+  align-items:stretch;
+  align-content:start;
+  padding-top:4px;
+  min-height:0;
+  overflow:visible;
+}
+.homev12.desk-home .home-sticky{grid-area:bal;position:static;z-index:auto;margin:0;padding:16px;background:var(--c1);border-radius:18px;border:1px solid rgba(255,255,255,.04);display:flex;flex-direction:column}
+.homev12.desk-home .home-sticky .hero .big{--odo-h:44px;font-size:44px;height:44px;line-height:44px}
+.homev12.desk-home .home-sticky canvas.chart{height:160px;margin:8px 0 4px;flex:none}
+.homev12.desk-home .home-scroll{grid-area:act;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden;padding:0;max-height:none;margin:0}
 .homev12.desk-home .home-scroll .desk-hd,.homev12.desk-home .home-scroll .desk-car{display:none}
-.homev12.desk-home .home-scroll .sh{margin:0}
-.homev12.desk-home .act-home{background:var(--c1);border-radius:18px;padding:12px 14px;border:1px solid rgba(255,255,255,.04);max-height:340px;overflow:auto}
-.dpanel{background:var(--c1);border-radius:18px;padding:14px 16px;border:1px solid rgba(255,255,255,.04);min-height:0;display:flex;flex-direction:column}
-.dpanel .dphd{display:flex;align-items:baseline;justify-content:space-between;margin:0 0 10px}
+.homev12.desk-home .home-scroll .sh{margin:0 0 8px}
+.homev12.desk-home .act-home{background:var(--c1);border-radius:18px;padding:12px 14px;border:1px solid rgba(255,255,255,.04);flex:1;min-height:180px;max-height:none;overflow:auto}
+.dpanel{background:var(--c1);border-radius:18px;padding:14px 16px;border:1px solid rgba(255,255,255,.04);min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.dpanel .dphd{display:flex;align-items:baseline;justify-content:space-between;margin:0 0 10px;flex:none}
 .dpanel .dphd h2{margin:0;font:700 16px var(--disp);letter-spacing:-.02em}
 .dpanel .dphd a,.dpanel .dphd .meta{color:var(--l2);font-size:12px;font-weight:600}
 .dpanel .dpbody{flex:1;min-height:0;overflow:auto}
-.desk-pos{grid-column:2;grid-row:1}
-.desk-agents{grid-column:3;grid-row:1 / span 2}
-.desk-inc{grid-column:2;grid-row:2}
-.desk-feed{grid-column:2;grid-row:3;min-height:280px;max-height:420px}
-.desk-wallets{grid-column:3;grid-row:3;min-height:280px;max-height:420px}
+.desk-pos{grid-area:pos;min-height:140px}
+.desk-pos .pos-sec+.pos-sec{margin-top:12px;padding-top:10px;border-top:.5px solid var(--sep)}
+.desk-pos .pos-h{font:600 11px var(--text);color:var(--l2);letter-spacing:.04em;text-transform:uppercase;margin:0 0 6px}
+.desk-agents{grid-area:agents}
+.desk-wallets{grid-area:wallets;min-height:140px}
+.desk-inc,.desk-feed{display:none!important}
 .desk-agents .agrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.desk-agents .dcard{width:auto;min-height:96px;scroll-snap-align:none}
-.desk-agents .dcard .k{font-size:16px}
-.inc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.inc-grid .ibox{background:var(--c2);border-radius:12px;padding:10px;text-align:center}
-.inc-grid .ibox .n{font:700 18px var(--disp)}.inc-grid .ibox .l{font-size:11px;color:var(--l2);margin-top:2px}
-.inc-src{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.inc-src span{height:22px;padding:0 8px;border-radius:999px;background:var(--c2);color:var(--l2);font:600 11px var(--text);display:inline-flex;align-items:center;gap:4px}
-.inc-src span b{color:#fff;font-weight:700}
-.desk-feed .frow{margin:0 0 6px;padding:8px 10px;grid-template-columns:32px 1fr auto}
-.desk-feed .frow .lg{width:32px!important;height:32px!important}
-.desk-feed .fchecks{display:none}
+.desk-agents .dcard{width:auto;min-height:78px;scroll-snap-align:none;padding:10px}
+.desk-agents .dcard .k{font-size:14px}
+.desk-agents .dcard .ks{font-size:10px}
 .desk-wallets .wrow{margin:0 0 6px;padding:10px 12px}
-.desk-pos .list{background:transparent}
-.desk-pos .li{padding-left:0;padding-right:0}
-.desk-pos .li+.li:before{left:48px}
+.desk-pos .list,.desk-closed .list{background:transparent}
+.desk-pos .li,.desk-closed .li{padding-left:0;padding-right:0}
+.desk-pos .li+.li:before,.desk-closed .li+.li:before{left:48px}
 /* non-home routes: comfortable reading width */
 #view[data-r=feed] .feed-view,#view[data-r=activity],#view[data-r=account],#view[data-r=wallets],#view[data-r=agents],#view[data-r=coin],#view[data-r=auditor],#view[data-r=replay]{max-width:920px;margin:0 auto}
 #view[data-r=feed] .feed-list{margin:0;padding:0 0 28px}
@@ -423,16 +430,31 @@ nav#tabs a.on[data-t=account]{color:var(--pk)}
 .dots{display:none}
 html[data-theme=neon] .dpanel,html[data-theme=neon] .homev12.desk-home .home-sticky,html[data-theme=neon] .homev12.desk-home .act-home{box-shadow:0 0 0 1px rgba(160,120,255,.18)}
 }
-@media (min-width:1024px) and (max-width:1280px){
-.homev12.desk-home{grid-template-columns:1.2fr 1fr;grid-template-rows:auto auto auto auto}
-.homev12.desk-home .home-sticky{grid-column:1;grid-row:1 / span 2}
-.desk-pos{grid-column:2;grid-row:1}
-.desk-inc{grid-column:2;grid-row:2}
-.desk-agents{grid-column:1 / span 2;grid-row:3}
-.desk-agents .agrid{grid-template-columns:repeat(4,1fr)}
-.desk-feed{grid-column:1;grid-row:4;max-height:360px}
-.desk-wallets{grid-column:2;grid-row:4;max-height:360px}
-.homev12.desk-home .home-scroll{grid-column:1 / span 2;grid-row:5}
+/* 1024–1279: two columns, agents full-width (match #view specificity) */
+@media (min-width:1024px) and (max-width:1279px){
+#view[data-r=home] .homev12.desk-home,.homev12.desk-home{
+  grid-template-columns:1fr 1fr;
+  grid-template-areas:
+    "bal pos"
+    "agents agents"
+    "act wallets";
+  min-height:auto;
+}
+.desk-agents .agrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.desk-agents .dcard{min-height:76px}
+.homev12.desk-home .home-sticky canvas.chart{height:130px}
+.homev12.desk-home .act-home{min-height:140px;max-height:280px}
+}
+/* 1280+: keep agents column scrollable so the page fits the viewport */
+@media (min-width:1280px){
+.desk-agents{max-height:calc(100dvh - 150px)}
+.desk-agents .dcard{min-height:78px;padding:10px}
+.desk-agents .dcard .k{font-size:14px}
+.homev12.desk-home .home-sticky canvas.chart{height:150px}
+}
+@media (min-width:1440px){
+.homev12.desk-home .home-sticky canvas.chart{height:160px}
+.desk-agents .dcard{min-height:82px}
 }
 
 /* strategy source tag */

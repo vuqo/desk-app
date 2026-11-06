@@ -105,7 +105,6 @@ function render(force){const r=route();navbar(r);errRow();
  if(r==="coin")drawCandles();if(r==="replay")rpBind(v);bindStars(v);if(r==="auditor")drawDisc();
  if(r==="activity"||r==="home")bindFlip(v);bindAcct(v);v.querySelectorAll(".seg a").forEach(a=>a.onclick=e=>{e.preventDefault();SEG=a.dataset.s;render()});
  if(r==="feed"){bindFeed(v);startFeedPoll()}
- else if(r==="home"&&isDesk()){startFeedPoll();if(!FEED&&DP())get("feed.json").then(x=>{FEED=x;(x.items||[]).forEach(it=>FEEDSEEN[it.m]=FEEDSEEN[it.m]||2);render()}).catch(()=>{})}
  else stopFeedPoll();
  if(r==="wallets")bindWallets(v);if(r==="home"||r==="wallets")bindMatch(v)}
 function skeleton(r){const b=(h,w,mt,br)=>`<div class="sk" style="height:${h}px;${w?"width:"+w+";":""}margin-top:${mt||0}px;${br?"border-radius:"+br+"px":""}"></div>`,rows=n=>`<div class="list nb">${Array.from({length:n},()=>`<div class="li"><div class="sk" style="width:32px;height:32px;border-radius:50%"></div><div class="m">${b(12,"60%")}${b(10,"35%",6)}</div>${b(12,"20%")}</div>`).join("")}</div>`;
@@ -124,11 +123,11 @@ function home(){const start=C?.start||S.settings?.["desk.paper_start_stack"]||S.
  const bal="$"+f2(S.stack),html=odo(bal,prevBal);if(prevBal!=null&&prevBal!==bal)BALDIR=S.stack>prevStack?1:-1;prevBal=bal;prevStack=S.stack;
  const age=Math.max(0,Math.round((Date.now()-(+new Date(S.ts)||LAST))/1000)),healthy=age<60;
  const paused=!!S.trading_paused;
- const acts=((A&&A.items)||[]).filter(a=>a.kind==="buy"||a.kind==="sell"||a.kind==="stop"||a.kind==="reject"||a.kind==="research").slice(0,12);
+ const acts=((A&&A.items)||[]).filter(a=>isDesk()?a.kind==="buy"||a.kind==="sell"||a.kind==="stop":a.kind==="buy"||a.kind==="sell"||a.kind==="stop"||a.kind==="reject"||a.kind==="research").slice(0,12);
  return `<div class="homev12${isDesk()?" desk-home":""}">
  <div class="home-sticky">
  <div class="hrow slim">${healthDot(healthy,age)}<span class="hchip muted">${S.mode}</span>
- <a class="hchip feed-jump" href="#/feed">Live · ${(S.feed&&S.feed.n)||(FEED&&FEED.n)||"–"}</a>
+ ${isDesk()?"":`<a class="hchip feed-jump" href="#/feed">Live · ${(S.feed&&S.feed.n)||(FEED&&FEED.n)||"–"}</a>`}
  <button class="pause ${paused?"on":""}" id="pauseBtn" aria-pressed="${paused}">${paused?"▶ Resume":"⏸ Pause"}</button></div>
  <div class="hero" id="heroTap" role="button" tabindex="0" aria-label="Open balance details">
   <div class="hero-top"><div class="big num" aria-label="${bal}">${html}</div>${paused?'<span class="pill p-n">Paused</span>':""}</div>
@@ -156,19 +155,15 @@ function homeAct(it){if(!it.length)return`<div class="wempty">No activity yet to
 
 function deskDashPanels(){if(!isDesk())return"";
  const open=(S.positions||[]).filter(p=>p.status==="open"||p.status==="exiting");
- const inc=S.incubator||{},by=inc.by_source||{};
- const feedItems=((FEED&&FEED.items)||[]).slice(0,8);
+ const closed=(S.positions||[]).filter(p=>p.status==="closed").slice(0,8);
  const cp=S.copy||{},wallets=(cp.wallets||[]).slice(0,8);
  const all=deskCards();
- return `<section class="dpanel desk-only desk-pos"><div class="dphd"><h2>Open positions</h2><span class="meta">${open.length}</span></div><div class="dpbody">${open.length?`<div class="list nb">${open.map(posRow).join("")}</div>`:`<div class="wempty">No open positions</div>`}</div></section>
- <section class="dpanel desk-only desk-agents"><div class="dphd"><h2>Agents</h2><a href="#/agents">All</a></div><div class="dpbody"><div class="agrid">${all.join("")}</div></div></section>
- <section class="dpanel desk-only desk-inc"><div class="dphd"><h2>Incubator</h2><span class="meta">${inc.incubating||0} watching</span></div><div class="dpbody">
-  <div class="inc-grid"><div class="ibox"><div class="n num">${inc.incubating||0}</div><div class="l">incubating</div></div>
-  <div class="ibox"><div class="n num up">${inc.promoted_24h||0}</div><div class="l">promoted 24h</div></div>
-  <div class="ibox"><div class="n num">${inc.expired_24h||0}</div><div class="l">expired 24h</div></div></div>
-  <div class="inc-src">${Object.keys(by).map(k=>`<span>${esc(k)} <b>${(by[k]&&by[k].incubating)||0}</b></span>`).join("")||'<span class="l3">No launchpads yet</span>'}</div>
+ const closedRows=closed.map(p=>{const pnl=p.pnl_usd||0;const cls=pnl>=0?"up":"dn";return`<a class="li" href="#/coin/${esc(p.mint)}">${logo(p.name,p.image||imgOf(p.mint),p.mint,32)}<div class="m"><div class="t">${esc(p.name)} ${srcTag(p.source)}</div><div class="s num">${usd(p.size_usd)} · ${esc(p.exit_reason||"exit")}</div></div><div class="v num ${cls}">${pnl>=0?"+":"-"}$${f2(Math.abs(pnl))}</div></a>`}).join("");
+ return `<section class="dpanel desk-only desk-pos"><div class="dphd"><h2>Positions</h2><span class="meta">${open.length} open · ${closed.length} closed</span></div><div class="dpbody">
+  <div class="pos-sec"><div class="pos-h">Open</div>${open.length?`<div class="list nb">${open.map(posRow).join("")}</div>`:`<div class="wempty">No open positions</div>`}</div>
+  <div class="pos-sec"><div class="pos-h">Closed</div>${closed.length?`<div class="list nb">${closedRows}</div>`:`<div class="wempty">No closed trades yet</div>`}</div>
  </div></section>
- <section class="dpanel desk-only desk-feed"><div class="dphd"><h2>Live feed</h2><a href="#/feed">${(FEED&&FEED.n)||feedItems.length||0} coins</a></div><div class="dpbody" id="deskFeedList">${feedItems.length?feedItems.map(feedRow).join(""):`<div class="wempty">Waiting for new coins</div>`}</div></section>
+ <section class="dpanel desk-only desk-agents"><div class="dphd"><h2>Agents</h2><a href="#/agents">All</a></div><div class="dpbody"><div class="agrid">${all.join("")}</div></div></section>
  <section class="dpanel desk-only desk-wallets"><div class="dphd"><h2>Wallets</h2><a href="#/wallets">${cp.watching||wallets.length||0} watching</a></div><div class="dpbody">${wallets.length?wallets.map(w=>`<div class="wrow"><span class="ck">✓</span><div class="m"><div class="t">${esc(w.addr||w.id)}</div><div class="s">${esc(w.last||"idle")}</div></div><span class="pill-30">30d ${w.pnl_30d!=null?(w.pnl_30d>=0?"+":"")+f2(w.pnl_30d):"—"}</span></div>`).join(""):`<div class="wempty">Copy desk warming up</div>`}</div></section>`}
 function deskSection(){const cp=S.copy,n=cp?.watching??0;
  const hd=`<div class="desk-hd"><h2>Copy desk</h2><a class="sub" href="#/wallets">${n?n+" wallets":"Wallets"}</a></div>`;
@@ -193,8 +188,6 @@ function deskCards(){const cp=S.copy,out=[];
  out.push(`<div class="dcard"><div class="nm">Dip Buyer</div><div class="k num">${Dp.signals_tonight||0}</div><div class="ks">−${Dp.pullback_min_pct||25}–${Dp.pullback_max_pct||40}%</div>${agentSt("dip")}</div>`);
  out.push(`<div class="dcard"><div class="nm">Breakout</div><div class="k num">${Br.signals_tonight||0}</div><div class="ks">≥${Br.vol_mult||3}× vol</div>${agentSt("breakout")}</div>`);
  out.push(`<div class="dcard"><div class="nm">Exit Mgr</div><div class="k">TP1 +${X.tp1_pct||50}%</div><div class="ks">sell ${Math.round(100*(X.tp1_sell_frac||0.5))}% · trail ${X.trail_pct||12}%</div>${agentSt("exits")}</div>`);
- const Dg=S.degen||{};
- out.push(`<div class="dcard"><div class="nm">Degen</div><div class="k num">${Dg.pnl!=null?(Dg.pnl>=0?"+":"")+f2(Dg.pnl):"—"}</div><div class="ks">$${(Dg.ticket_usd||10)} · ${Dg.open||0}/${Dg.max_open||3} open · ${Dg.win_rate!=null?Dg.win_rate+"% wr":(Dg.buys_tonight||0)+" buys"}</div>${agentSt("degen")}</div>`);
  return out}
 function chartCard(title,inner){return`<div class="ag chart-card"><div class="hd"><span class="nm">${title}</span></div><div class="cbody">${inner}</div></div>`}
 function healthDot(ok,age){return`<span class="hchip health" title="Desk data age"><i class="dot" style="background:${ok?"var(--g)":"var(--o)"}"></i>${ok?"Live":age+"s"}</span>`}
@@ -311,10 +304,9 @@ function cards(){const au=S.auditor.live,an=S.analyst.live,ex=S.executor.live,sc
  `${(()=>{const K=S.kol||{};return`<div class="ag"><div class="hd"><span class="nm">KOL Tracker</span>${agentSt("kol")}</div><div class="k num">${K.n||(K.kols||[]).length||0} KOLs</div><div class="ks num">match ${K.match_n||2} in ${K.window_min||10}m · ${K.buys_tonight||0} buys</div><div class="ft"><div class="l3" style="font-size:var(--t2)">${(K.active_matches||[])[0]?`Match ${(K.active_matches[0].ticker||"").slice(0,10)} · ${K.active_matches[0].status}`:"Watching public caller wallets."}</div></div></div>`})()}`,
  `${(()=>{const D=S.dip||{};return`<div class="ag"><div class="hd"><span class="nm">Dip Buyer</span>${agentSt("dip")}</div><div class="k num">${D.signals_tonight||0} signals</div><div class="ks">−${D.pullback_min_pct||25}–${D.pullback_max_pct||40}% pullback</div><div class="ft"><div class="l3" style="font-size:var(--t2)">${(D.recent||[])[0]?esc((D.recent[0].ticker||D.recent[0].mint||"").slice(0,12))+" · "+esc(D.recent[0].status||""):"Re-enters strong coins after a dip."}</div></div></div>`})()}`,
  `${(()=>{const B=S.breakout||{};return`<div class="ag"><div class="hd"><span class="nm">Volume Breakout</span>${agentSt("breakout")}</div><div class="k num">${B.signals_tonight||0} signals</div><div class="ks">≥${B.vol_mult||3}× 5m volume</div><div class="ft"><div class="l3" style="font-size:var(--t2)">${(B.recent||[])[0]?esc((B.recent[0].ticker||"").slice(0,12))+" · "+esc(B.recent[0].reason||B.recent[0].status||""):"Flags volume spikes with rising buyers."}</div></div></div>`})()}`,
- `${(()=>{const X=S.exits||{},rk=S.risk||{};return`<div class="ag"><div class="hd"><span class="nm">Exit Manager</span>${agentSt("exits")}</div><div class="k">${X.guarding||rk.guarding?"Guarding":"Idle"}</div><div class="ks">TP1 +${X.tp1_pct||50}% sell ${Math.round(100*(X.tp1_sell_frac||0.5))}%</div><div class="ft" style="display:flex;gap:8px"><span class="pill p-g mono">trail ${X.trail_pct||rk.trail_pct||12}%</span><span class="l3" style="font-size:var(--t1)">${esc(X.last||rk.last_exit||"")}</span></div></div>`})()}`,
- `${(()=>{const D=S.degen||{};const pnl=D.pnl;const cls=pnl==null?"":pnl>=0?"up":"dn";return`<div class="ag"><div class="hd"><span class="nm">Degen</span>${agentSt("degen")}</div><div class="k num ${cls}">${pnl!=null?(pnl>=0?"+":"")+f2(pnl):"$"+(D.ticket_usd||10)+" tickets"}</div><div class="ks">stop −${D.stop_pct||15}% · TP +${D.tp_pct||40}% · ${D.time_stop_min||15}m</div><div class="ft"><div class="l3" style="font-size:var(--t2)">${D.open||0}/${D.max_open||3} open · ${D.win_rate!=null?D.win_rate+"% wr · "+(D.wins||0)+"W/"+(D.losses||0)+"L":(D.buys_tonight||0)+" buys tonight"}${D.last?" · "+esc(D.last):""}</div></div></div>`})()}`
+ `${(()=>{const X=S.exits||{},rk=S.risk||{};return`<div class="ag"><div class="hd"><span class="nm">Exit Manager</span>${agentSt("exits")}</div><div class="k">${X.guarding||rk.guarding?"Guarding":"Idle"}</div><div class="ks">TP1 +${X.tp1_pct||50}% sell ${Math.round(100*(X.tp1_sell_frac||0.5))}%</div><div class="ft" style="display:flex;gap:8px"><span class="pill p-g mono">trail ${X.trail_pct||rk.trail_pct||12}%</span><span class="l3" style="font-size:var(--t1)">${esc(X.last||rk.last_exit||"")}</span></div></div>`})()}`
 ].map((h,i)=>h.replace(/class="ag"/,`class="ag" style="--ac:${AC[i%AC.length]}"`))}
-function chips(){const names=["scanner","auditor","analyst","executor","risk","kol","dip","breakout","exits","degen"];const labels={kol:"KOL",dip:"Dip",breakout:"Breakout",exits:"Exits",degen:"Degen"};return`<a class="chips" href="#/agents">${names.map((a,i)=>{const g=S.agents[a]||{};const lab=labels[a]||(a[0].toUpperCase()+a.slice(1));return`<span class="chip" style="--ac:${AC[i%AC.length]}"><i class="dot" style="background:${g.paused?"var(--l3)":g.alive?AC[i%AC.length]:"var(--r)"}"></i>${lab}</span>`}).join("")}</a>`}
+function chips(){const names=["scanner","auditor","analyst","executor","risk","kol","dip","breakout","exits"];const labels={kol:"KOL",dip:"Dip",breakout:"Breakout",exits:"Exits"};return`<a class="chips" href="#/agents">${names.map((a,i)=>{const g=S.agents[a]||{};const lab=labels[a]||(a[0].toUpperCase()+a.slice(1));return`<span class="chip" style="--ac:${AC[i%AC.length]}"><i class="dot" style="background:${g.paused?"var(--l3)":g.alive?AC[i%AC.length]:"var(--r)"}"></i>${lab}</span>`}).join("")}</a>`}
 function carousel(){const c=cards();return`<div class="car">${c.join("")}</div><div class="dots">${c.map((_,i)=>`<i class="${i?"":"on"}"></i>`).join("")}</div>`}
 function agents(){return`<div class="pt">Agents</div>${carousel()}${watchSec()}<div class="sh"><h2>Scanner feed</h2>${srT()}</div>${S.scanner.feed.filter(f=>SR||f.verdict==="pass").length?`<div class="list nb fill">${S.scanner.feed.filter(f=>SR||f.verdict==="pass").slice(0,15).map(f=>`<a class="li" href="#/coin/${esc(f.mint)}">${star(f.mint,f.name,1)}${logo(f.name,f.image,f.mint,32)}<div class="m"><div class="t" style="${f.verdict==="pass"?"":"color:var(--l3);text-decoration:line-through;text-decoration-color:var(--r)"}">${esc(f.name||f.mint.slice(0,6))}</div></div><div class="v num ${f.verdict==="pass"?"up":"dn"}">${f.verdict==="pass"?`liq $${kfmt(f.liq)} · → auditor`:esc(f.reason)}</div></a>`).join("")}</div>`:`<div class="empty"><b>${S.scanner.feed.length?"No passes yet":"No pools yet"}</b>${S.scanner.feed.length?S.scanner.feed.length+" rejects hidden. Coins that pass show up here.":"Scanner is listening for coins graduating to PumpSwap."}</div>`}`}
 /* ---------- activity ---------- */
