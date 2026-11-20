@@ -81,7 +81,7 @@ function navbar(r){const h=$("#nav");
  if(r==="auditor"){h.innerHTML=`${ic("back","#/home")}<div class="ttl">Auditor</div><div style="width:34px"></div>`;return}
  const t={wallets:"Wallets",agents:"Agents",activity:"Activity",account:"Account",feed:"Live Feed"}[r];
  const handle=S?.settings?.["desk.fomo_handle"]||"";
- h.innerHTML=`<a class="av" href="#/account">${esc((handle[0]||"D").toUpperCase())}</a><a class="who" href="#/account">${t||'Grok Bot<span>›</span>'}</a>${ic("search","#/activity")}${ic("bell","#/activity")}`}
+ h.innerHTML=`<a class="av" href="#/account">${esc((handle[0]||"D").toUpperCase())}</a><a class="who" href="#/account">${t||'FOMO Desk Terminal<span>›</span>'}</a>${ic("search","#/activity")}${ic("bell","#/activity")}`}
 function upd(){const n=$("#nav");if(!n||!S)return;let u=$("#upd");if(!u){u=document.createElement("span");u.id="upd";n.appendChild(u)}const a=Math.max(0,Math.round((Date.now()-(+new Date(S.ts)||LAST))/1000));u.textContent=a<60?`updated ${a}s ago`:`updated ${Math.round(a/60)}m ago`;u.className=a>90?"old":""}
 function errRow(){upd();const e=$("#err");if(ERR&&ERR!=="nolink"&&S){const n=Math.max(0,Math.round((NEXT-Date.now())/1000));e.hidden=false;e.textContent=`Desk offline · retrying in ${n}s · last update ${time(LAST||S.ts)}`}else e.hidden=true}
 setInterval(errRow,1000);
