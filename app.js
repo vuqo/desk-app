@@ -22,7 +22,7 @@ async function get(p){const r=await fetch(BASE()+p+"?t="+Date.now(),{cache:"no-s
 async function poll(){if(!DP()){ERR="nolink";render();return}
  try{[S,A,C]=await Promise.all([get("state.json"),get("activity.json"),get("chart.json")]);ERR=null;LAST=Date.now();indexImgs();{const top=(A&&A.items||[]).filter(a=>a.kind==="buy"||(a.kind==="sell"&&!String(a.value).startsWith("-")));const mx=Math.max(0,...top.map(a=>+new Date(a.ts)||0));if(SEENTS&&mx>SEENTS)PENDBURST=1;SEENTS=Math.max(SEENTS||0,mx)||-1}
   const m=location.hash.match(/#\/(?:coin|replay)\/(\w+)/);if(m){const cd=await get("coin/"+m[1]+".json").catch(()=>null);if(cd)coinCache[m[1]]=cd;else COINMISS[m[1]]=1}
- }catch(e){ERR=e.message}NEXT=Date.now()+15000;render()}
+ }catch(e){ERR=e.message}NEXT=Date.now()+15000;render();if(route()==="agents")liveUpdate()}
 let prevStack=0,BALDIR=0,PENDBURST=0,SEENTS=0,P=[],SHEET=0,SCRUB=null,CHSERIES=null,PAUSEBUSY=0,FEED=null,FEEDSEEN={},FEEDPREV={},FEEDTIMER=0,MATCHSHEET=0,WFILTER="",LASTACTID=0,WALFLASH={},HOLD_EXP=null;const DEMO=DEMO0;
 function burstAt(sel){if(RM)return;const el=$(sel);if(!el)return;const r=el.getBoundingClientRect(),cx=r.left+Math.min(r.width,260)/2,cy=r.top+r.height/2,cols=["#00d35a","#64d2ff","#ffd60a","#ff6b9a","#fff","#00d35a"];
  for(let i=0;i<36;i++){const a=Math.random()*6.283,v=2+Math.random()*6;P.push({x:cx,y:cy,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2.5,c:cols[i%6],s:2+Math.random()*3,l:1,st:Math.random()<.35,r:Math.random()*6})}fxKick()}
@@ -92,7 +92,7 @@ function dataSig(){if(!S)return ERR||"0";
  const feed=((FEED&&FEED.items)||[]).slice(0,12).map(i=>i.m+":"+i.st+":"+i.liq).join(",");
  const cp=S.copy||{},cact=cp.active||{};return [S.stack,S.free,S.trading_paused,S.pnl_today,pos,(S.feed&&S.feed.n)||0,SHEET,MATCHSHEET,SCRUB&&SCRUB.v,SEG,RANGE,WFILTER,(FEED&&FEED.ts)||"",feed,S.mode,cp.buys_tonight,cact.matched,cact.status,(cp.wallets||[]).map(w=>w.id+":"+w.last).join(","),HOLD_EXP].join("|")}
 function render(force){const r=route();navbar(r);errRow();
- document.querySelectorAll("#tabs a").forEach(a=>a.classList.toggle("on",a.dataset.t===r||(r==="auditor"&&a.dataset.t==="home")||(r==="agents"&&a.dataset.t==="home")||(r==="coin"&&a.dataset.t==="home")));
+ document.querySelectorAll("#tabs a").forEach(a=>a.classList.toggle("on",a.dataset.t===r||(r==="auditor"&&a.dataset.t==="home")||(r==="coin"&&a.dataset.t==="home")));
  const v=$("#view"),car=v.querySelector(".car"),sl=car?car.scrollLeft:0;const feedSl=v.querySelector("#feedList")?.scrollTop||0;
  if(ERR==="nolink"){v.innerHTML=pair();bindPair();LAST_SIG="";return}
  if(!S){v.innerHTML=ERR?`<div class="empty"><b>Desk offline</b>Can't reach your desk right now. Retrying every 15 seconds.</div>`:skeleton(r);LAST_SIG="";return}
@@ -102,7 +102,7 @@ function render(force){const r=route();navbar(r);errRow();
  v.dataset.r=r;v.innerHTML=({home,agents,auditor,coin,activity,account,replay,feed,wallets}[r]||home)();
  const c2=v.querySelector(".car");if(c2){c2.scrollLeft=sl;c2.onscroll=()=>{const i=Math.round(c2.scrollLeft/(c2.firstElementChild.offsetWidth+12));v.querySelectorAll(".dots i").forEach((d,j)=>d.classList.toggle("on",j===i))}}const fl=v.querySelector("#feedList");if(fl)fl.scrollTop=feedSl;
  if(r==="home"){rollOdo();bindHome(v);drawChart(false);maybeMilestone();maybeToasts();if(BALDIR&&!RM){const b=$(".big");b.classList.add(BALDIR>0?"gu":"gd");setTimeout(()=>b.classList.remove("gu","gd"),1400);if(BALDIR>0)burstAt(".big");}BALDIR=0;if(PENDBURST){burstAt(".big");win();PENDBURST=0}v.querySelectorAll(".range button").forEach(b=>b.onclick=()=>{RANGE=b.dataset.r;localStorage.setItem("range",RANGE);v.querySelectorAll(".range button").forEach(x=>x.classList.toggle("on",x===b));drawChart(true)})}
- if(r==="coin")drawCandles();if(r==="replay")rpBind(v);bindStars(v);if(r==="auditor")drawDisc();
+ if(r==="agents")liveMount(v);if(r==="coin")drawCandles();if(r==="replay")rpBind(v);bindStars(v);if(r==="auditor")drawDisc();
  if(r==="activity"||r==="home")bindFlip(v);bindAcct(v);v.querySelectorAll(".seg a").forEach(a=>a.onclick=e=>{e.preventDefault();SEG=a.dataset.s;render()});
  if(r==="feed"){bindFeed(v);startFeedPoll()}
  else stopFeedPoll();
@@ -339,7 +339,7 @@ function cards(){const au=S.auditor.live,an=S.analyst.live,ex=S.executor.live,sc
 ].map((h,i)=>h.replace(/class="ag"/,`class="ag" style="--ac:${AC[i%AC.length]}"`))}
 function chips(){const names=["scanner","auditor","analyst","executor","risk","kol","dip","breakout","exits"];const labels={kol:"KOL",dip:"Dip",breakout:"Breakout",exits:"Exits"};return`<a class="chips" href="#/agents">${names.map((a,i)=>{const g=S.agents[a]||{};const lab=labels[a]||(a[0].toUpperCase()+a.slice(1));return`<span class="chip" style="--ac:${AC[i%AC.length]}"><i class="dot" style="background:${g.paused?"var(--l3)":g.alive?AC[i%AC.length]:"var(--r)"}"></i>${lab}</span>`}).join("")}</a>`}
 function carousel(){const c=cards();return`<div class="car">${c.join("")}</div><div class="dots">${c.map((_,i)=>`<i class="${i?"":"on"}"></i>`).join("")}</div>`}
-function agents(){return`<div class="pt">Agents</div>${carousel()}${watchSec()}<div class="sh"><h2>Scanner feed</h2>${srT()}</div>${S.scanner.feed.filter(f=>SR||f.verdict==="pass").length?`<div class="list nb fill">${S.scanner.feed.filter(f=>SR||f.verdict==="pass").slice(0,15).map(f=>`<a class="li" href="#/coin/${esc(f.mint)}">${star(f.mint,f.name,1)}${logo(f.name,f.image,f.mint,32)}<div class="m"><div class="t" style="${f.verdict==="pass"?"":"color:var(--l3);text-decoration:line-through;text-decoration-color:var(--r)"}">${esc(f.name||f.mint.slice(0,6))}</div></div><div class="v num ${f.verdict==="pass"?"up":"dn"}">${f.verdict==="pass"?`liq $${kfmt(f.liq)} · → auditor`:esc(f.reason)}</div></a>`).join("")}</div>`:`<div class="empty"><b>${S.scanner.feed.length?"No passes yet":"No pools yet"}</b>${S.scanner.feed.length?S.scanner.feed.length+" rejects hidden. Coins that pass show up here.":"Scanner is listening for coins graduating to PumpSwap."}</div>`}`}
+function agents(){return`<div class="pt">Agents</div><div id="liveSlot"></div><div class="sh"><h2>Agent cards</h2></div>${carousel()}${watchSec()}<div class="sh"><h2>Scanner feed</h2>${srT()}</div>${S.scanner.feed.filter(f=>SR||f.verdict==="pass").length?`<div class="list nb fill">${S.scanner.feed.filter(f=>SR||f.verdict==="pass").slice(0,15).map(f=>`<a class="li" href="#/coin/${esc(f.mint)}">${star(f.mint,f.name,1)}${logo(f.name,f.image,f.mint,32)}<div class="m"><div class="t" style="${f.verdict==="pass"?"":"color:var(--l3);text-decoration:line-through;text-decoration-color:var(--r)"}">${esc(f.name||f.mint.slice(0,6))}</div></div><div class="v num ${f.verdict==="pass"?"up":"dn"}">${f.verdict==="pass"?`liq $${kfmt(f.liq)} · → auditor`:esc(f.reason)}</div></a>`).join("")}</div>`:`<div class="empty"><b>${S.scanner.feed.length?"No passes yet":"No pools yet"}</b>${S.scanner.feed.length?S.scanner.feed.length+" rejects hidden. Coins that pass show up here.":"Scanner is listening for coins graduating to PumpSwap."}</div>`}`}
 /* ---------- activity ---------- */
 function actIcon(k){return k==="buy"?["rgba(10,132,255,.2)","var(--b)","↗"]:k==="sell"?["rgba(0,211,90,.18)","var(--g)","$"]:k==="stop"?["rgba(255,69,58,.16)","var(--r)","!"]:["#2c2c2e","var(--l2)","×"]}
 function actList(it,emptyText){if(!it.length)return`<div class="list nb"><div class="empty" style="padding:28px 20px">${emptyText}</div></div>`;
@@ -412,7 +412,7 @@ function account(){const s=S.settings,sp=S.spec,row=(k,v,href)=>`${href?`<a clas
  <div class="sh"><h2>Desk</h2></div><div class="list nb">${row("Mode",`<span class="pill ${S.mode==="PAPER"?"p-o":"p-r"}">${S.mode}</span>`)}${row("Alerts",esc((S.notifier||"").split(" (")[0].replace(" webhook","")))}${row("Web push","Not available in plan B")}${row("Balance",`<span class="num">${usd(S.stack)}</span>`)}</div>
  <div class="l3" style="font-size:var(--t1);margin:10px 4px 0">To change a setting, tell Grok Bot, for example “set stop to -8%”.</div>
  ${Object.entries(groups).map(([g,t])=>`<div class="sh"><h2>${t}</h2></div><div class="list nb">${Object.keys(s).filter(k=>k.startsWith(g+".")).map(k=>{const v=s[k],r=sp[k];return`<div class="setrow"><div class="lb"><span>${esc(k.split(".")[1].replace(/_/g," "))}</span><span class="mono l2 num">${esc(v)}</span></div>${typeof v==="number"&&r&&r[0]!=null?`<input type="range" style="--pc:${Math.max(0,Math.min(100,100*(v-r[0])/((r[1]-r[0])||1)))}%" min="${r[0]}" max="${r[1]}" step="any" value="${v}" disabled>`:""}</div>`}).join("")}</div>`).join("")}
- <div class="foot">New to FOMO? ${ext(S.signup_url,esc(S.signup_url))}</div>`}
+ <div class="foot">New to FOMO? ${ext(S.signup_url,esc(S.signup_url))}</div><div class="foot" style="margin-top:-12px">Desk app v20</div>`}
 function bindAcct(v){v.querySelectorAll("[data-theme]").forEach(b=>b.onclick=()=>{localStorage.setItem("theme",b.dataset.theme);applyTheme();render()});
  const s=v.querySelector("#snd");if(s)s.onclick=()=>{const on=!SOUND();localStorage.setItem("sound",on?"on":"off");if(on){unlockAudio();chaChing()}render()};
  const t=v.querySelector("#tst");if(t)t.onclick=()=>{if(SOUND())unlockAudio();win();burstAt("#tst")}}
@@ -569,3 +569,73 @@ function bindFeed(v){/* list scrolls itself; countdown tick */
    const pub=+new Date(FEED.ts)||now; const elapsed=Math.max(0,(now-pub)/1000); const left=Math.max(0,(it.left||0)-elapsed);
    cd.textContent=leftTxt(left);cd.classList.toggle("hot",left<300&&(it.st==="watching"||it.st==="graduated"))})};
  clearInterval(bindFeed._t);bindFeed._t=setInterval(tickLeft,1000);tickLeft()}
+/* ---------- v20 live "Agents at work" panel ----------
+   Built once and kept between renders so animations aren't cut by the 15s refresh. Only animates
+   events present in state.json (pipeline / agent_ticker); between refreshes it just spaces them out. */
+const LV={el:null,tok:{},q:[],tk:{},ts:"",first:1,lane:0,disp:0,clk:0,doing:{}};
+const LSTG=[["scan","scanner","Scanner"],["audit","auditor","Auditor"],["research","researcher","Research"],["analyst","analyst","Analyst"],["exec","executor","Executor"]];
+const LFEED=[["trending","Trending"],["dip","Dip"],["breakout","Breakout"],["copy","Copy"],["kol","KOL"],["incubator","Incubator"],["fomo_scan","FOMO"]];
+const LGUARD=[["risk","Risk"],["exits","Exits"],["degen","Degen"],["publisher","Publisher"]];
+const LNAME=Object.fromEntries([...LSTG.map(s=>[s[1],s[2]==="Research"?"Researcher":s[2]]),...LFEED,...LGUARD]);
+const lvAgo=s=>s==null?"—":s<60?Math.round(s)+"s":s<3600?Math.round(s/60)+"m":s<86400?Math.round(s/3600)+"h":Math.round(s/86400)+"d";
+const lvEl=()=>LV.el&&LV.el.isConnected;
+function lvBuild(){const el=document.createElement("section");el.className="lv";el.innerHTML=`
+ <div class="lv-hd"><h2>Agents at work</h2><span class="lv-st" id="lvSt"></span></div>
+ <div class="lv-card">
+  <div class="lv-feeders" aria-label="Signal feeders">${LFEED.map(([a,l])=>`<span class="lv-f" data-a="${a}"><i></i>${l}</span>`).join("")}<span class="lv-arrow">→</span></div>
+  <div class="lv-pipe" aria-label="Pipeline"><div class="lv-lane"><div class="lv-track"></div><div class="lv-toks"></div></div>
+   ${LSTG.map(([k,a,l],i)=>`<div class="lv-node" data-a="${a}" data-k="${k}" style="left:${(i+.5)*20}%"><div class="lv-orb"><span>${l[0]}</span></div><b>${l}</b><em class="num"></em></div>`).join("")}</div>
+  <div class="lv-guards">${LGUARD.map(([a,l])=>`<span class="lv-f" data-a="${a}"><i></i>${l}</span>`).join("")}</div>
+ </div>
+ <div class="sh"><h2>What each agent is doing</h2></div><div class="list nb lv-rows" id="lvRows">${[...LSTG.map(s=>s[1]),...LFEED.map(s=>s[0]),...LGUARD.map(s=>s[0])].map(a=>`<div class="li lv-row" data-a="${a}"><i class="lv-dot"></i><div class="m"><div class="t">${esc(LNAME[a]||a)} <span class="lv-tag"></span></div><div class="s lv-doing"></div></div><div class="v num l3 lv-age"></div></div>`).join("")}</div>
+ <div class="sh"><h2>Coins in the pipeline</h2></div><div class="list nb lv-coins" id="lvCoins"></div>
+ <div class="sh"><h2>Latest actions</h2></div><div class="list nb lv-tick" id="lvTick"></div>`;return el}
+function liveMount(v){const slot=v.querySelector("#liveSlot");if(!slot)return;if(!LV.el)LV.el=lvBuild();slot.replaceWith(LV.el);liveUpdate(1);
+ clearInterval(LV.clk);LV.clk=setInterval(()=>{if(!lvEl()){clearInterval(LV.clk);return}lvClock()},1000)}
+function lvSince(){return S&&S.ts?Math.max(0,(Date.now()-(+new Date(S.ts)))/1000):0}
+function lvClock(){if(!S||!lvEl())return;const d=lvSince(),ag=S.agents||{};
+ LV.el.querySelectorAll(".lv-row").forEach(r=>{const g=ag[r.dataset.a];if(!g)return;const e=r.querySelector(".lv-age");const s=g.act_age==null?null:g.act_age+d;e.textContent=s==null?"":lvAgo(s)+" ago"})}
+function lvCounts(a,g){const n=g&&g.n15||{};if(n.in!=null&&n.pass!=null)return`${n.in} in · ${n.pass}✓`;if(n.in!=null)return`${n.in} done`;if(n.bought!=null)return`${n.bought} bought`;if(n.signals!=null)return`${n.signals} signals`;if(n.exits!=null)return`${n.exits} exits`;return n.events!=null?`${n.events} actions`:""}
+function liveUpdate(force){if(!S||!LV.el||!lvEl())return;if(!force&&S.ts===LV.ts)return;LV.ts=S.ts;
+ const ag=S.agents||{},paused=!!S.trading_paused,el=LV.el;
+ el.classList.toggle("paused",paused);
+ const cnt={working:0,idle:0,stale:0,paused:0};Object.keys(LNAME).forEach(a=>{const g=ag[a];if(g&&g.status)cnt[g.status]++});
+ $("#lvSt").innerHTML=paused?`<span class="pill p-n">⏸ New trades paused</span>`:`<span class="pill p-g"><i class="dot lv-live"></i>${cnt.working} working</span>${cnt.stale?` <span class="pill p-o">${cnt.stale} stale</span>`:""}`;
+ el.querySelectorAll("[data-a]").forEach(n=>{const g=ag[n.dataset.a];const st=(g&&g.status)||"stale";n.classList.remove("working","idle","paused","stale");n.classList.add(st)});
+ el.querySelectorAll(".lv-node").forEach(n=>{const g=ag[n.dataset.a];n.querySelector("em").textContent=lvCounts(n.dataset.a,g);n.title=(g&&g.doing)||""});
+ el.querySelectorAll(".lv-row").forEach(r=>{const a=r.dataset.a,g=ag[a]||{};const d=r.querySelector(".lv-doing"),t=r.querySelector(".lv-tag");
+  const txt=g.doing||"no heartbeat yet";if(d.textContent!==txt){d.textContent=txt;if(LV.doing[a]!=null&&!RM){r.classList.remove("chg");void r.offsetWidth;r.classList.add("chg")}LV.doing[a]=txt}
+  d.className="s lv-doing"+(g.ok===1?" up":g.ok===0?" dn":"");t.textContent={working:"working",idle:"idle",paused:"paused",stale:"no heartbeat"}[g.status]||"";const c=lvCounts(a,g);r.querySelector(".lv-age").dataset.c=c});
+ lvClock();lvCoins();lvTicker();lvFlow()}
+function lvCoins(){const box=$("#lvCoins");if(!box)return;const ev=(S.pipeline||[]).slice(0,8);
+ if(!ev.length){box.innerHTML=`<div class="empty" style="padding:22px">No coins in the last hour.</div>`;return}
+ const lbl={scan:"Scan",audit:"Audit",research:"Research",analyst:"Analyst",exec:"Buy"};
+ const old=new Set([...box.querySelectorAll(".lv-coin")].map(x=>x.dataset.k));
+ box.innerHTML=ev.map(e=>{const last=e.st[e.st.length-1];return`<div class="li lv-coin ${!old.size||old.has(e.k)?"":"new"}" data-k="${esc(e.k)}"><div class="lv-sym">${esc((e.sym||"?").slice(0,2).toUpperCase())}</div><div class="m"><div class="t">${esc(e.sym)}</div><div class="lv-stg">${e.st.map(s=>`<span class="${s[1]?"ok":"bad"}">${lbl[s[0]]||s[0]} ${s[1]?"✓":"✕"}</span>`).join("")}${e.done?"":`<span class="wait">${lbl[(LSTG[e.st.length]||[])[0]]||"next"} …</span>`}</div></div><div class="v ${e.done?(last[1]?"up":"dn"):"l2"}" style="font-size:var(--t1)">${esc(last[2]||(last[1]?"passed":""))}</div></div>`}).join("")}
+function lvTicker(){const box=$("#lvTick");if(!box)return;const it=(S.agent_ticker||[]).slice(0,10);const key=x=>x.t+"|"+x.txt;
+ const first=!Object.keys(LV.tk).length;const html=it.map(x=>{const k=key(x),isNew=!first&&!LV.tk[k];return`<div class="li lv-ti ${isNew?"new":""}"><i class="lv-dot ${x.ok===1?"g":x.ok===0?"r":""}"></i><div class="m"><div class="t" style="font-size:var(--t2)">${esc(x.txt)}</div><div class="s">${esc(LNAME[x.a]||x.a)} · ${esc(x.sub||"")}</div></div><div class="v l3 num" style="font-size:var(--t1)">${time(x.t)}</div></div>`}).join("");
+ LV.tk={};it.forEach(x=>LV.tk[key(x)]=1);box.innerHTML=html||`<div class="empty" style="padding:22px">No actions yet.</div>`}
+/* token flow: one token per real pipeline event; hops stage to stage, green on pass, red fade on reject */
+function lvFlow(){const lane=LV.el.querySelector(".lv-toks");if(!lane)return;const ev=(S.pipeline||[]).slice().reverse();
+ const live=new Set(ev.map(e=>e.k));
+ for(const k in LV.tok){const t=LV.tok[k];if(!live.has(k)&&!t.busy){t.el.remove();delete LV.tok[k]}}
+ if(RM){lane.innerHTML="";LV.tok={};return}
+ const fresh=[];ev.forEach((e,i)=>{let t=LV.tok[e.k];
+  if(!t){if(LV.first&&i<ev.length-4){LV.tok[e.k]={done:1,el:document.createElement("i"),at:e.st.length,ev:e};return}
+   const el=document.createElement("i");el.className="lv-tok";el.textContent=(e.sym||"?").slice(0,2).toUpperCase();el.title=e.sym;
+   t=LV.tok[e.k]={el,at:-1,ev:e,done:0,jit:((LV.lane++)%3-1)*7,busy:0};el.style.left=`calc(-3% - 11px)`;fresh.push(t)}
+  else{t.ev=e;if(!t.busy&&!t.done&&e.st.length>t.at+1)fresh.push(t)}});
+ LV.first=0;fresh.forEach(t=>{if(!LV.q.includes(t))LV.q.push(t)});while(LV.q.length>8){const t=LV.q.shift();t.el.remove();t.done=1}
+ lvDispatch()}
+function lvDispatch(){if(LV.disp||!LV.q.length)return;const t=LV.q.shift();const lane=LV.el&&LV.el.querySelector(".lv-toks");
+ if(lane&&!document.hidden){if(!t.el.isConnected){lane.appendChild(t.el);void t.el.offsetWidth}lvHop(t)}
+ const gap=Math.max(700,Math.min(2600,12000/Math.max(1,LV.q.length+1)));LV.disp=setTimeout(()=>{LV.disp=0;lvDispatch()},gap)}
+function lvX(i,t){return`calc(${(i+.5)*20}% - 11px + ${t.jit||0}px)`}
+function lvHop(t){t.busy=1;const e=t.ev,n=e.st.length,j=t.at+1;
+ if(j>=n){/* reached last known stage */t.busy=0;if(e.done){t.done=1;setTimeout(()=>{t.el.classList.add("gone");setTimeout(()=>t.el.remove(),900)},e.st[n-1][1]?1400:900)}
+  else if(j<LSTG.length){t.el.style.left=lvX(j,t);t.el.classList.add("wait")}return}
+ t.el.classList.remove("wait");t.el.style.left=lvX(j,t);t.el.classList.add("on");
+ setTimeout(()=>{t.at=j;const ok=e.st[j][1];t.el.classList.toggle("pass",!!ok);t.el.classList.toggle("fail",!ok);
+  const node=LV.el&&LV.el.querySelector(`.lv-node[data-k="${e.st[j][0]}"]`);if(node){node.classList.remove("hit","hitbad");void node.offsetWidth;node.classList.add(ok?"hit":"hitbad")}
+  if(!ok){t.at=n;t.busy=0;t.done=1;setTimeout(()=>{t.el.classList.add("gone");setTimeout(()=>t.el.remove(),900)},700);return}
+  setTimeout(()=>lvHop(t),420)},760)}
